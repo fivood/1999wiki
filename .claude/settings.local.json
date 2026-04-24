@@ -4,7 +4,9 @@
       "Bash(git -C \"G:/1999story/.claude/worktrees/naughty-kepler-1ad4e7\" log --oneline -10)",
       "Read(//tmp/**)",
       "Read(//mnt/g/1999story/.claude/worktrees/naughty-kepler-1ad4e7/raw/**)",
-      "Read(//mnt/g/**)"
+      "Read(//mnt/g/**)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
