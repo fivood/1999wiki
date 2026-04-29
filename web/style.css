@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&display=swap');
 
 /* === 基础重置与变量 === */
 :root {
@@ -19,8 +19,8 @@
   --radius: 0px;
   --sidebar-width: 260px;
   --header-height: 64px;
-  --font-body: 'Noto Serif SC', 'Source Han Serif SC', 'SimSun', 'STSong', 'FangSong', Georgia, 'Times New Roman', serif;
-  --font-mono: 'Courier New', Courier, 'SimSun', monospace;
+  --font-body: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif;
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, 'Noto Sans SC', monospace;
 }
 
 * { box-sizing: border-box; }
