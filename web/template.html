@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{title}} — 1999剧情Wiki</title>
+  <link rel="stylesheet" href="{{root}}style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
+</head>
+<body>
+  <header class="site-header">
+    <button class="menu-toggle" id="menuToggle" aria-label="切换菜单">☰</button>
+    <a href="{{root}}index.html" class="site-title">📖 1999剧情Wiki</a>
+    <div class="header-search">
+      <input type="text" id="searchInput" placeholder="搜索..." autocomplete="off">
+      <div id="searchResults" class="search-results"></div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <nav class="nav-tree">
+        {{nav}}
+      </nav>
+    </aside>
+
+    <main class="content">
+      <article>
+        {{breadcrumbs}}
+        {{content}}
+      </article>
+      <footer class="page-footer">
+        <p>本站为《重返未来：1999》同人剧情知识库，仅供创作参考。</p>
+        <p>所有角色、剧情及世界观设定版权归 <strong>Bluepoch（蓝点技术）</strong> 所有。</p>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    /* 移动端菜单切换 */
+    const menuToggle = document.getElementById('menuToggle');
+    const sidebar = document.getElementById('sidebar');
+    menuToggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+    document.addEventListener('click', (e) => {
+      if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+        if (!sidebar.contains(e.target) && e.target !== menuToggle) {
+          sidebar.classList.remove('open');
+        }
+      }
+    });
+
+    /* 搜索 */
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    let searchIndex = [];
+
+    fetch('{{root}}search.json')
+      .then(r => r.json())
+      .then(data => { searchIndex = data; })
+      .catch(() => {});
+
+    function doSearch(q) {
+      if (!q || q.length < 1) { searchResults.innerHTML = ''; return; }
+      const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+      const scored = searchIndex.map(item => {
+        let score = 0;
+        const t = item.title.toLowerCase();
+        const c = (item.text || '').toLowerCase();
+        for (const term of terms) {
+          if (t === term) score += 10;
+          else if (t.startsWith(term)) score += 7;
+          else if (t.includes(term)) score += 5;
+          const idx = c.indexOf(term);
+          if (idx !== -1) score += 2;
+        }
+        return { ...item, score };
+      }).filter(i => i.score > 0).sort((a, b) => b.score - a.score).slice(0, 12);
+
+      if (scored.length === 0) {
+        searchResults.innerHTML = '<div class="no-result">无结果</div>';
+        return;
+      }
+      searchResults.innerHTML = scored.map(i => {
+        const url = '{{root}}' + i.url;
+        let snippet = '';
+        if (i.text) {
+          const idx = i.text.toLowerCase().indexOf(terms[0]);
+          const start = Math.max(0, idx - 40);
+          snippet = i.text.slice(start, start + 120);
+          if (start > 0) snippet = '…' + snippet;
+          if (start + 120 < i.text.length) snippet += '…';
+        }
+        return `<a href="${url}" class="search-item"><div class="search-item-title">${i.title}</div>${snippet ? `<div class="search-item-snippet">${snippet}</div>` : ''}</a>`;
+      }).join('');
+    }
+
+    searchInput.addEventListener('input', e => doSearch(e.target.value.trim()));
+    searchInput.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { searchInput.value = ''; searchResults.innerHTML = ''; }
+    });
+    document.addEventListener('click', e => {
+      if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+        searchResults.innerHTML = '';
+      }
+    });
+  </script>
+</body>
+</html>
