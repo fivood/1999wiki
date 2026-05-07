@@ -1,7 +1,7 @@
 ---
 type: “character”
 title: “Z女士”
-aliases: [“Madam Z”]
+aliases: [“Madam Z”, “张之之”]
 tags: [“基金会”, “委员会”, “弦理论”, “政治”]
 sources: [“1ST-10”, “4TH”, “LAFP”]
 updated: “2026-04-28”
