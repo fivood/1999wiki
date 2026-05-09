@@ -80,13 +80,18 @@ function buildNav(currentUrl) {
     const label = isIndex ? '首页 & 索引' : key;
     const hasCurrent = list.some(f => f.url === currentUrl);
 
-    html += `<div class="nav-group${hasCurrent ? ' current' : ' collapsed'}">`;
+    html += `<div class="nav-group${hasCurrent || (key === '其他' && currentUrl === 'newspaper.html') ? ' current' : ' collapsed'}">`;
     html += `<div class="nav-group-title" onclick="this.parentElement.classList.toggle('collapsed')"><span class="arrow">▾</span>${escapeHtml(label)}</div>`;
     html += '<ul class="nav-list">';
     for (const f of list) {
       const active = f.url === currentUrl ? ' active' : '';
       const title = f.meta?.title || f.name;
       html += `<li><a href="${relativeRoot(currentUrl)}${f.url}" class="${active}">${escapeHtml(title)}</a></li>`;
+    }
+    // 其他分组下添加报纸首页链接
+    if (key === '其他') {
+      const npActive = currentUrl === 'newspaper.html' ? ' active' : '';
+      html += `<li><a href="${relativeRoot(currentUrl)}newspaper.html" class="${npActive}">今日报纸</a></li>`;
     }
     html += '</ul></div>';
   }
@@ -291,6 +296,11 @@ for (const file of files) {
     .replace(/\{\{nav\}\}/g, navHtml)
     .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
     .replace(/\{\{content\}\}/g, metaBar + contentHtml);
+
+  // 首页自动跳转到报纸页
+  if (file.slug === 'index') {
+    page = page.replace('</head>', '<meta http-equiv="refresh" content="0; url=newspaper.html"></head>');
+  }
 
   // 写入
   const outPath = path.join(DIST_DIR, file.url);

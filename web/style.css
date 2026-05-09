@@ -216,13 +216,13 @@ article {
 .nav-group.collapsed .arrow { transform: rotate(-90deg); }
 .nav-group.collapsed .nav-list { display: none; }
 
-/* 当前分组：标签头黑色底（含伪元素） */
+/* 当前分组：标签头深棕底（含伪元素） */
 .nav-group.current .nav-group-title,
 .nav-group.current .nav-group-title::before,
 .nav-group.current .nav-group-title::after {
-  background: var(--border);
+  background: #5c3a1e;
   color: #fff;
-  border-color: var(--border);
+  border-color: #5c3a1e;
 }
 
 /* 标签内容区域 - 与标签头左右对齐 */
@@ -304,7 +304,10 @@ article {
   font-weight: 700;
   letter-spacing: 3px;
   margin: 0;
-  color: var(--text-head);
+  color: #fff;
+  background: #5c3a1e;
+  padding: 8px 20px;
+  display: inline-block;
   text-transform: uppercase;
   line-height: 1.1;
 }
@@ -312,7 +315,7 @@ article {
   font-size: 15px;
   color: var(--text-dim);
   letter-spacing: 6px;
-  margin: 6px 0 0;
+  margin: 10px 0 0;
   font-weight: 400;
 }
 .masthead-meta {
@@ -324,16 +327,13 @@ article {
   border-top: 1px solid var(--border-light);
   border-bottom: 1px solid var(--border-light);
   padding: 6px 4px;
-  margin-top: 12px;
+  margin-top: 14px;
   text-transform: uppercase;
   letter-spacing: 1px;
 }
 
 /* 头条 */
 .headline-story {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
   margin-bottom: 28px;
   padding-bottom: 24px;
   border-bottom: 3px double var(--border);
@@ -355,6 +355,7 @@ article {
   text-align: justify;
   color: var(--text);
   margin: 0;
+  max-width: none;
 }
 .headline-main .read-more {
   display: inline-block;
@@ -365,29 +366,6 @@ article {
   font-weight: 700;
 }
 .headline-main .read-more:hover { text-decoration: underline; }
-
-/* 侧边栏 */
-.headline-side .box-ad {
-  border: 2px solid var(--border);
-  padding: 14px;
-  background: var(--bg-elevated);
-}
-.box-ad-title {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 2px;
-  text-align: center;
-  border-bottom: 1px solid var(--border-light);
-  padding-bottom: 6px;
-  margin-bottom: 10px;
-}
-.box-ad-text {
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--text-dim);
-  text-align: justify;
-}
 
 /* 新闻网格（不规则布局） */
 .news-grid {
