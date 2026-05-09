@@ -455,11 +455,32 @@ article {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
-  .headline-story { grid-template-columns: 1fr; }
-  .news-grid { grid-template-columns: 1fr; }
-  .news-item { border-right: none; }
-  .masthead h1 { font-size: 26px; }
-  .headline-main h2 { font-size: 20px; }
+  .newspaper { padding: 4px; }
+  .masthead h1 { font-size: 22px; padding: 6px 12px; }
+  .masthead-sub { font-size: 12px; letter-spacing: 3px; }
+  .masthead-meta { font-size: 10px; padding: 4px; }
+
+  .headline-story { margin-bottom: 16px; padding-bottom: 16px; }
+  .headline-main h2 { font-size: 18px; }
+  .headline-summary { font-size: 14px; }
+
+  .news-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 8px;
+  }
+  .news-headline,
+  .news-left-mid,
+  .news-right-mid,
+  .news-left-low,
+  .news-right-up,
+  .news-right-down {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .news-item { padding: 12px; }
+  .news-item h3 { font-size: 15px; padding: 5px 8px; }
+  .news-item p { font-size: 13px; }
 }
 
 /* === 文章排版（报纸风格） === */
