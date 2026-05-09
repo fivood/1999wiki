@@ -135,20 +135,73 @@ html, body {
   padding: 32px 40px 80px;
 }
 
-/* === 侧边栏导航（文件夹标签页效果） === */
+/* === 侧边栏导航（梯形文件夹标签页） === */
 .nav-tree { padding: 0 10px; }
-.nav-group { margin-bottom: 10px; }
+
+/* 每个分组是一个标签页 */
+.nav-group {
+  margin-bottom: -10px;          /* 层叠：后面的标签压住前面的 */
+  position: relative;
+}
+
+/* 当前分组浮在最上层 */
+.nav-group.current { z-index: 10; }
+
+/* 标签头 - 梯形效果（用伪元素做斜边） */
 .nav-group-title {
+  position: relative;
   display: flex; align-items: center;
   font-size: 13px; font-weight: 700;
-  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 8px 12px 6px;
+  padding: 9px 28px;
   cursor: pointer; user-select: none;
-  border-bottom: 1.5px solid var(--border-light);
   font-family: var(--font-body);
+  background: var(--bg);
+  border: 1.5px solid var(--border-light);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  margin: 0 10px;
+  color: var(--text-dim);
+  z-index: 2;
 }
+
+/* 左斜边 */
+.nav-group-title::before {
+  content: '';
+  position: absolute;
+  bottom: -1.5px;
+  left: -8px;
+  width: 16px;
+  height: calc(100% + 1.5px);
+  background: inherit;
+  border: 1.5px solid var(--border-light);
+  border-bottom: none;
+  border-right: none;
+  border-radius: 10px 0 0 0;
+  transform: skewX(-18deg);
+  transform-origin: bottom right;
+  z-index: -1;
+}
+
+/* 右斜边 */
+.nav-group-title::after {
+  content: '';
+  position: absolute;
+  bottom: -1.5px;
+  right: -8px;
+  width: 16px;
+  height: calc(100% + 1.5px);
+  background: inherit;
+  border: 1.5px solid var(--border-light);
+  border-bottom: none;
+  border-left: none;
+  border-radius: 0 10px 0 0;
+  transform: skewX(18deg);
+  transform-origin: bottom left;
+  z-index: -1;
+}
+
 .nav-group-title:hover { color: var(--text); }
 .nav-group-title .arrow {
   display: inline-block; margin-right: 6px;
@@ -158,52 +211,39 @@ html, body {
 .nav-group.collapsed .arrow { transform: rotate(-90deg); }
 .nav-group.collapsed .nav-list { display: none; }
 
-/* 标签页列表 */
-.nav-list {
-  list-style: none;
-  margin: 6px 0 12px;
-  padding: 0;
-}
-.nav-list li {
-  margin: 0;
-  position: relative;
-}
-/* 层叠：后面的标签微微上移，形成覆盖感 */
-.nav-list li + li { margin-top: -6px; }
-
-.nav-list a {
-  display: block;
-  padding: 7px 14px;
-  color: var(--text);
-  text-decoration: none;
-  font-size: 14px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: var(--font-body);
-  background: var(--bg);
-  border: 1.5px solid var(--border-light);
-  border-radius: 12px;
-  position: relative;
-  z-index: 1;
-  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-.nav-list a:hover {
-  background: var(--bg-hover);
-  color: var(--link-hover);
-  text-decoration: underline;
-  z-index: 2;
-  transform: translateX(4px);
-}
-/* 当前页：黑色底、白字、浮在最上层 */
-.nav-list a.active {
+/* 当前分组：标签头黑色底 */
+.nav-group.current .nav-group-title,
+.nav-group.current .nav-group-title::before,
+.nav-group.current .nav-group-title::after {
   background: var(--border);
   color: #fff;
-  font-weight: 700;
   border-color: var(--border);
-  z-index: 3;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
 }
+
+/* 标签内容区域 */
+.nav-list {
+  list-style: none;
+  margin: 0;
+  padding: 10px 16px 16px;
+  background: var(--bg);
+  border: 1.5px solid var(--border-light);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  position: relative;
+  z-index: 1;
+}
+
+.nav-list li { margin: 1px 0; }
+.nav-list a {
+  display: block; padding: 5px 10px;
+  color: var(--text); text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font-body);
+  border-radius: 4px;
+}
+.nav-list a:hover { background: var(--bg-hover); color: var(--link-hover); text-decoration: underline; }
+.nav-list a.active { background: var(--bg-hover); color: var(--accent); font-weight: 700; }
 
 /* === 面包屑 === */
 .breadcrumbs {

@@ -80,7 +80,7 @@ function buildNav(currentUrl) {
     const label = isIndex ? '首页 & 索引' : key;
     const hasCurrent = list.some(f => f.url === currentUrl);
 
-    html += `<div class="nav-group${hasCurrent ? '' : ' collapsed'}">`;
+    html += `<div class="nav-group${hasCurrent ? ' current' : ' collapsed'}">`;
     html += `<div class="nav-group-title" onclick="this.parentElement.classList.toggle('collapsed')"><span class="arrow">▾</span>${escapeHtml(label)}</div>`;
     html += '<ul class="nav-list">';
     for (const f of list) {
