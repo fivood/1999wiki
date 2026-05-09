@@ -171,15 +171,15 @@ html, body {
   content: '';
   position: absolute;
   bottom: -1.5px;
-  left: -8px;
-  width: 16px;
+  left: -5px;
+  width: 10px;
   height: calc(100% + 1.5px);
   background: inherit;
   border: 1.5px solid var(--border-light);
   border-bottom: none;
   border-right: none;
-  border-radius: 10px 0 0 0;
-  transform: skewX(-18deg);
+  border-radius: 0;
+  transform: skewX(-10deg);
   transform-origin: bottom right;
   z-index: -1;
 }
@@ -189,15 +189,15 @@ html, body {
   content: '';
   position: absolute;
   bottom: -1.5px;
-  right: -8px;
-  width: 16px;
+  right: -5px;
+  width: 10px;
   height: calc(100% + 1.5px);
   background: inherit;
   border: 1.5px solid var(--border-light);
   border-bottom: none;
   border-left: none;
-  border-radius: 0 10px 0 0;
-  transform: skewX(18deg);
+  border-radius: 0;
+  transform: skewX(10deg);
   transform-origin: bottom left;
   z-index: -1;
 }
