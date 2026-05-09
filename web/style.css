@@ -145,9 +145,13 @@ article {
 
 /* 每个分组是一个标签页 */
 .nav-group {
-  margin-bottom: -16px;          /* 层叠：后面的标签压住前面的 */
+  margin-bottom: -10px;          /* 层叠：后面的标签压住前面的 */
   position: relative;
+  z-index: 1;
 }
+
+/* 展开的分组浮在上方 */
+.nav-group:not(.collapsed) { z-index: 5; }
 
 /* 当前分组浮在最上层 */
 .nav-group.current { z-index: 10; }
@@ -229,7 +233,7 @@ article {
 .nav-list {
   list-style: none;
   margin: 0 10px;
-  padding: 10px 14px 22px;
+  padding: 10px 14px 28px;
   background: var(--bg);
   border: 1.5px solid var(--border-light);
   border-top: none;
