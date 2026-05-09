@@ -131,9 +131,13 @@ html, body {
 .content {
   flex: 1;
   margin-left: var(--sidebar-width);
-  max-width: 800px;
   padding: 32px 40px 80px;
   background: url('bg.jpg') repeat;
+}
+
+article {
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 /* === 侧边栏导航（文件夹标签页） === */
