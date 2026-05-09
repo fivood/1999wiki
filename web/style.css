@@ -389,20 +389,20 @@ article {
   text-align: justify;
 }
 
-/* 新闻网格 */
+/* 新闻网格（不规则布局） */
 .news-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-rows: auto auto auto auto;
+  gap: 12px;
   margin-bottom: 24px;
 }
+
 .news-item {
   padding: 16px;
-  border-right: 1px solid var(--border-light);
-  border-bottom: 1px solid var(--border-light);
+  border: 1px solid var(--border-light);
+  background: var(--bg);
 }
-.news-item:nth-child(3n) { border-right: none; }
-.news-item:nth-last-child(-n+3) { border-bottom: none; }
 .news-item h3 {
   font-size: 17px;
   font-weight: 700;
@@ -430,6 +430,32 @@ article {
   font-weight: 700;
 }
 .news-item .read-more:hover { text-decoration: underline; }
+
+/* 网格定位 */
+.news-headline {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.news-left-mid {
+  grid-column: 1;
+  grid-row: 2;
+}
+.news-right-mid {
+  grid-column: 2;
+  grid-row: 2;
+}
+.news-left-low {
+  grid-column: 1;
+  grid-row: 3 / 5;
+}
+.news-right-up {
+  grid-column: 2;
+  grid-row: 3;
+}
+.news-right-down {
+  grid-column: 2;
+  grid-row: 4;
+}
 
 /* 报纸底栏 */
 .newspaper-footer {

@@ -200,15 +200,52 @@ function generateNewspaperHome(files) {
   html += `</div>`;
   html += `</div>`;
 
-  // 新闻网格
+  // 新闻网格（不规则布局）
+  const [s1, s2, s3, s4, s5, s6] = stories;
   html += `<div class="news-grid">`;
-  for (const s of stories) {
-    html += `<article class="news-item">`;
-    html += `<h3><a href="${s.url}">${escapeHtml(s.meta.title)}</a></h3>`;
-    html += `<p>${escapeHtml(extractSummary(s, 180))}</p>`;
-    html += `<a href="${s.url}" class="read-more">阅读全文 →</a>`;
-    html += `</article>`;
-  }
+
+  // 全宽头条
+  html += `<article class="news-item news-headline">`;
+  html += `<h3><a href="${s1.url}">${escapeHtml(s1.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s1, 260))}</p>`;
+  html += `<a href="${s1.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 左中
+  html += `<article class="news-item news-left-mid">`;
+  html += `<h3><a href="${s2.url}">${escapeHtml(s2.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s2, 200))}</p>`;
+  html += `<a href="${s2.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 右中
+  html += `<article class="news-item news-right-mid">`;
+  html += `<h3><a href="${s3.url}">${escapeHtml(s3.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s3, 160))}</p>`;
+  html += `<a href="${s3.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 左下（竖长条）
+  html += `<article class="news-item news-left-low">`;
+  html += `<h3><a href="${s4.url}">${escapeHtml(s4.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s4, 240))}</p>`;
+  html += `<a href="${s4.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 右下上
+  html += `<article class="news-item news-right-up">`;
+  html += `<h3><a href="${s5.url}">${escapeHtml(s5.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s5, 180))}</p>`;
+  html += `<a href="${s5.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 右下下
+  html += `<article class="news-item news-right-down">`;
+  html += `<h3><a href="${s6.url}">${escapeHtml(s6.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s6, 140))}</p>`;
+  html += `<a href="${s6.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
   html += `</div>`;
 
   // 底栏
