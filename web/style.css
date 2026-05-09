@@ -135,18 +135,18 @@ html, body {
   padding: 32px 40px 80px;
 }
 
-/* === 侧边栏导航（报纸栏目感） === */
-.nav-tree { padding: 0 14px; }
-.nav-group { margin-bottom: 8px; }
+/* === 侧边栏导航（文件夹标签页效果） === */
+.nav-tree { padding: 0 10px; }
+.nav-group { margin-bottom: 10px; }
 .nav-group-title {
   display: flex; align-items: center;
   font-size: 13px; font-weight: 700;
   color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 8px 10px 6px;
+  padding: 8px 12px 6px;
   cursor: pointer; user-select: none;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1.5px solid var(--border-light);
   font-family: var(--font-body);
 }
 .nav-group-title:hover { color: var(--text); }
@@ -157,17 +157,53 @@ html, body {
 }
 .nav-group.collapsed .arrow { transform: rotate(-90deg); }
 .nav-group.collapsed .nav-list { display: none; }
-.nav-list { list-style: none; margin: 4px 0 10px; padding: 0 0 0 10px; }
-.nav-list li { margin: 1px 0; }
-.nav-list a {
-  display: block; padding: 5px 10px;
-  color: var(--text); text-decoration: none;
-  font-size: 14px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-family: var(--font-body);
+
+/* 标签页列表 */
+.nav-list {
+  list-style: none;
+  margin: 6px 0 12px;
+  padding: 0;
 }
-.nav-list a:hover { background: var(--bg-hover); color: var(--link-hover); text-decoration: underline; }
-.nav-list a.active { background: var(--bg-hover); color: var(--accent); font-weight: 700; }
+.nav-list li {
+  margin: 0;
+  position: relative;
+}
+/* 层叠：后面的标签微微上移，形成覆盖感 */
+.nav-list li + li { margin-top: -6px; }
+
+.nav-list a {
+  display: block;
+  padding: 7px 14px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-body);
+  background: var(--bg);
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.nav-list a:hover {
+  background: var(--bg-hover);
+  color: var(--link-hover);
+  text-decoration: underline;
+  z-index: 2;
+  transform: translateX(4px);
+}
+/* 当前页：黑色底、白字、浮在最上层 */
+.nav-list a.active {
+  background: var(--border);
+  color: #fff;
+  font-weight: 700;
+  border-color: var(--border);
+  z-index: 3;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
 
 /* === 面包屑 === */
 .breadcrumbs {
