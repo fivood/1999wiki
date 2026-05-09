@@ -382,16 +382,19 @@ article {
   background: var(--bg);
 }
 .news-item h3 {
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 700;
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   line-height: 1.4;
+  background: #5c3a1e;
+  color: #fff;
+  padding: 6px 10px;
 }
 .news-item h3 a {
-  color: var(--text-head);
+  color: #fff;
   text-decoration: none;
 }
-.news-item h3 a:hover { color: var(--accent); text-decoration: underline; }
+.news-item h3 a:hover { text-decoration: underline; }
 .news-item p {
   font-size: 13px;
   line-height: 1.75;
