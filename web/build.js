@@ -228,31 +228,25 @@ for (const file of files) {
   const parsed = matter(raw);
   file.meta = parsed.data;
 
-  let contentHtml;
+  // Wiki Link → HTML 链接
+  let mdBody = processWikiLinks(parsed.content, file.slug);
 
-  if (file.slug === 'index') {
-    // 首页生成报纸
-    contentHtml = generateNewspaperHome(files);
-  } else {
-    // Wiki Link → HTML 链接
-    let mdBody = processWikiLinks(parsed.content, file.slug);
-    contentHtml = marked.parse(mdBody);
+  let contentHtml = marked.parse(mdBody);
 
-    // 给 heading 添加 anchor id（基于纯文本内容）
-    contentHtml = contentHtml.replace(/<h([1-6])>(.+?)<\/h\1>/g, (match, level, inner) => {
-      const plain = inner.replace(/<[^>]+>/g, '');
-      const id = plain.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '');
-      const safeId = id || 'heading-' + Math.random().toString(36).slice(2, 7);
-      return `<h${level} id="${safeId}">${inner}</h${level}>`;
-    });
-  }
+  // 给 heading 添加 anchor id（基于纯文本内容）
+  contentHtml = contentHtml.replace(/<h([1-6])>(.+?)<\/h\1>/g, (match, level, inner) => {
+    const plain = inner.replace(/<[^>]+>/g, '');
+    const id = plain.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '');
+    const safeId = id || 'heading-' + Math.random().toString(36).slice(2, 7);
+    return `<h${level} id="${safeId}">${inner}</h${level}>`;
+  });
 
   // 组装页面
   const root = relativeRoot(file.url);
   const title = parsed.data.title || (file.slug === 'index' ? '首页' : file.name);
   const navHtml = buildNav(file.url);
   const breadcrumbs = buildBreadcrumbs(file.slug, root);
-  const metaBar = file.slug === 'index' ? '' : buildMetaBar(parsed.data);
+  const metaBar = buildMetaBar(parsed.data);
 
   let page = template
     .replace(/\{\{title\}\}/g, escapeHtml(title))
@@ -274,6 +268,16 @@ for (const file of files) {
     text: plainText.slice(0, 3000), // 限制长度
   });
 }
+
+/* ── 生成报纸首页（独立页面） ── */
+const newspaperHtml = generateNewspaperHome(files);
+const newspaperPage = template
+  .replace(/\{\{title\}\}/g, '今日报纸')
+  .replace(/\{\{root\}\}/g, '')
+  .replace(/\{\{nav\}\}/g, buildNav('newspaper.html'))
+  .replace(/\{\{breadcrumbs\}\}/g, '')
+  .replace(/\{\{content\}\}/g, newspaperHtml);
+fs.writeFileSync(path.join(DIST_DIR, 'newspaper.html'), newspaperPage, 'utf-8');
 
 /* ── 写入搜索索引 & 复制静态资源 ── */
 fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
