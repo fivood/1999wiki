@@ -146,6 +146,80 @@ function processWikiLinks(mdText, currentSlug) {
   });
 }
 
+/* ── 提取纯文本摘要 ── */
+function extractSummary(file, maxLen = 220) {
+  const raw = fs.readFileSync(file.full, 'utf-8');
+  const parsed = matter(raw);
+  let text = parsed.content
+    .replace(/^#+ .+\n?/gm, '')          // 去掉标题
+    .replace(/\[\[[^\]]+\]\]/g, '')      // 去掉 wiki link
+    .replace(/!\[.*?\]\(.*?\)/g, '')     // 去掉图片
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // 保留链接文字
+    .replace(/[*_~`>#\-|]/g, '')         // 去掉 markdown 符号
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.slice(0, maxLen) + (text.length > maxLen ? '…' : '');
+}
+
+/* ── 生成报纸首页 ── */
+function generateNewspaperHome(files) {
+  const candidates = files.filter(f => f.slug !== 'index' && f.meta?.title);
+  const shuffled = candidates.sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, 7);
+  if (selected.length < 3) return '';
+
+  const headline = selected[0];
+  const stories = selected.slice(1);
+  const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  const issueNum = Math.floor(Math.random() * 900) + 100;
+
+  let html = `<div class="newspaper">`;
+
+  // 报头
+  html += `<header class="masthead">`;
+  html += `<h1>THE REVERSE: 1999 CHRONICLE</h1>`;
+  html += `<div class="masthead-sub">重返未来：1999 剧情 Wiki</div>`;
+  html += `<div class="masthead-meta">`;
+  html += `<span>第 ${issueNum} 期</span>`;
+  html += `<span>${dateStr}</span>`;
+  html += `<span>售价 1 利齿子儿</span>`;
+  html += `</div></header>`;
+
+  // 头条
+  html += `<div class="headline-story">`;
+  html += `<div class="headline-main">`;
+  html += `<h2><a href="${headline.url}">${escapeHtml(headline.meta.title)}</a></h2>`;
+  html += `<p class="headline-summary">${escapeHtml(extractSummary(headline, 320))}</p>`;
+  html += `<a href="${headline.url}" class="read-more">阅读全文 →</a>`;
+  html += `</div>`;
+  html += `<div class="headline-side">`;
+  html += `<div class="box-ad">`;
+  html += `<div class="box-ad-title">今日简讯</div>`;
+  html += `<div class="box-ad-text">本站共收录 ${files.length} 篇词条，涵盖角色、剧情、世界观等内容。所有资料均来自游戏原作，仅供创作参考。</div>`;
+  html += `</div>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  // 新闻网格
+  html += `<div class="news-grid">`;
+  for (const s of stories) {
+    html += `<article class="news-item">`;
+    html += `<h3><a href="${s.url}">${escapeHtml(s.meta.title)}</a></h3>`;
+    html += `<p>${escapeHtml(extractSummary(s, 180))}</p>`;
+    html += `<a href="${s.url}" class="read-more">阅读全文 →</a>`;
+    html += `</article>`;
+  }
+  html += `</div>`;
+
+  // 底栏
+  html += `<footer class="newspaper-footer">`;
+  html += `<div>本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>`;
+  html += `</footer>`;
+
+  html += `</div>`;
+  return html;
+}
+
 /* ── 处理单个文件 ── */
 const searchDocs = [];
 
@@ -154,25 +228,31 @@ for (const file of files) {
   const parsed = matter(raw);
   file.meta = parsed.data;
 
-  // Wiki Link → HTML 链接
-  let mdBody = processWikiLinks(parsed.content, file.slug);
+  let contentHtml;
 
-  let contentHtml = marked.parse(mdBody);
+  if (file.slug === 'index') {
+    // 首页生成报纸
+    contentHtml = generateNewspaperHome(files);
+  } else {
+    // Wiki Link → HTML 链接
+    let mdBody = processWikiLinks(parsed.content, file.slug);
+    contentHtml = marked.parse(mdBody);
 
-  // 给 heading 添加 anchor id（基于纯文本内容）
-  contentHtml = contentHtml.replace(/<h([1-6])>(.+?)<\/h\1>/g, (match, level, inner) => {
-    const plain = inner.replace(/<[^>]+>/g, '');
-    const id = plain.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '');
-    const safeId = id || 'heading-' + Math.random().toString(36).slice(2, 7);
-    return `<h${level} id="${safeId}">${inner}</h${level}>`;
-  });
+    // 给 heading 添加 anchor id（基于纯文本内容）
+    contentHtml = contentHtml.replace(/<h([1-6])>(.+?)<\/h\1>/g, (match, level, inner) => {
+      const plain = inner.replace(/<[^>]+>/g, '');
+      const id = plain.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '');
+      const safeId = id || 'heading-' + Math.random().toString(36).slice(2, 7);
+      return `<h${level} id="${safeId}">${inner}</h${level}>`;
+    });
+  }
 
   // 组装页面
   const root = relativeRoot(file.url);
   const title = parsed.data.title || (file.slug === 'index' ? '首页' : file.name);
   const navHtml = buildNav(file.url);
   const breadcrumbs = buildBreadcrumbs(file.slug, root);
-  const metaBar = buildMetaBar(parsed.data);
+  const metaBar = file.slug === 'index' ? '' : buildMetaBar(parsed.data);
 
   let page = template
     .replace(/\{\{title\}\}/g, escapeHtml(title))
