@@ -242,29 +242,28 @@ article {
   z-index: 1;
 }
 
-/* 列表项描边 */
-.nav-list li { margin: 4px 0; }
+/* 列表项横线分割 */
+.nav-list li {
+  margin: 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.nav-list li:last-child { border-bottom: none; }
 .nav-list a {
-  display: block; padding: 5px 10px;
+  display: block; padding: 6px 10px;
   color: var(--text); text-decoration: none;
   font-size: 14px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   font-family: var(--font-body);
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  transition: background 0.15s, border-color 0.15s;
 }
 .nav-list a:hover {
   background: var(--bg-hover);
   color: var(--link-hover);
   text-decoration: underline;
-  border-color: var(--border);
 }
 .nav-list a.active {
   background: var(--bg-hover);
   color: var(--accent);
   font-weight: 700;
-  border-color: var(--border);
 }
 
 .nav-list li { margin: 1px 0; }
