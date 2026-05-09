@@ -133,6 +133,7 @@ html, body {
   margin-left: var(--sidebar-width);
   max-width: 800px;
   padding: 32px 40px 80px;
+  background: url('bg.jpg') repeat;
 }
 
 /* === 侧边栏导航（文件夹标签页） === */
@@ -281,12 +282,7 @@ html, body {
 .breadcrumbs span { margin: 0 6px; color: var(--border-light); }
 
 /* === 文章排版（报纸风格） === */
-article {
-  color: var(--text);
-  background: var(--bg) url('bg.jpg') center top / cover no-repeat;
-  padding: 24px 32px;
-  border-radius: 12px;
-}
+article { color: var(--text); }
 article h1 {
   font-size: 32px; font-weight: 700;
   color: var(--text-head); margin: 0 0 18px;
