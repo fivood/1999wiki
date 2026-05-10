@@ -175,7 +175,7 @@ article {
   z-index: 2;
 }
 
-/* 左斜边 - 小圆角、小角度，不突兀 */
+/* 左斜边 */
 .nav-group-title::before {
   content: '';
   position: absolute;
@@ -243,32 +243,13 @@ article {
 }
 
 /* 列表项横线分割 */
-.nav-list li {
+.nav-list > li {
   margin: 0;
   border-bottom: 1px solid var(--border-light);
 }
-.nav-list li:last-child { border-bottom: none; }
+.nav-list > li:last-child { border-bottom: none; }
 .nav-list a {
   display: block; padding: 6px 10px;
-  color: var(--text); text-decoration: none;
-  font-size: 14px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  font-family: var(--font-body);
-}
-.nav-list a:hover {
-  background: var(--bg-hover);
-  color: var(--link-hover);
-  text-decoration: underline;
-}
-.nav-list a.active {
-  background: var(--bg-hover);
-  color: var(--accent);
-  font-weight: 700;
-}
-
-.nav-list li { margin: 1px 0; }
-.nav-list a {
-  display: block; padding: 5px 10px;
   color: var(--text); text-decoration: none;
   font-size: 14px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
@@ -277,6 +258,46 @@ article {
 }
 .nav-list a:hover { background: var(--bg-hover); color: var(--link-hover); text-decoration: underline; }
 .nav-list a.active { background: var(--bg-hover); color: var(--accent); font-weight: 700; }
+
+/* === 二级子分组（派閥/子目录） === */
+.nav-subgroup { list-style: none; margin: 2px 0; border-bottom: none !important; }
+.nav-subgroup-title {
+  display: flex; align-items: center;
+  font-size: 12px; font-weight: 700;
+  color: var(--text-dim);
+  padding: 5px 8px 4px 4px;
+  cursor: pointer; user-select: none;
+  letter-spacing: 0.5px;
+  font-family: var(--font-body);
+  border-left: 2px solid var(--border-light);
+  margin-left: 2px;
+}
+.nav-subgroup-title:hover { color: var(--text); border-left-color: var(--accent); }
+.nav-subgroup-title .subarrow {
+  display: inline-block; margin-right: 5px;
+  font-size: 8px; font-family: sans-serif;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.nav-subgroup:not(.open) .subarrow { transform: rotate(0deg); }
+.nav-subgroup.open .subarrow { transform: rotate(90deg); }
+.nav-subgroup:not(.open) .nav-sublist { display: none; }
+.nav-sublist {
+  list-style: none; margin: 2px 0 4px;
+  padding: 0 0 0 14px;
+  border-left: 1px dashed var(--border-light);
+  margin-left: 5px;
+}
+.nav-sublist li { margin: 0; border-bottom: none !important; }
+.nav-sublist a {
+  display: block; padding: 3px 8px;
+  color: var(--text); text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font-body);
+}
+.nav-sublist a:hover { background: var(--bg-hover); color: var(--link-hover); }
+.nav-sublist a.active { background: var(--bg-hover); color: var(--accent); font-weight: 700; }
 
 /* === 面包屑 === */
 .breadcrumbs {
