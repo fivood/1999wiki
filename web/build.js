@@ -55,39 +55,73 @@ function scanWiki(dir, base = '') {
 const files = scanWiki(WIKI_DIR);
 const slugSet = new Set(files.map(f => f.slug));
 
-/* ── 构建导航树 ── */
+/* ── 构建导航树（支持两级子分组） ── */
 function buildNav(currentUrl) {
-  // 按目录分组
-  const groups = {};
+  // 按目录层级分组：topKey → { files: [], subgroups: { subKey → [files] } }
+  const topGroups = {};
+
   for (const f of files) {
-    const top = f.dir.split('/')[0] || '其他';
-    if (!groups[top]) groups[top] = [];
-    groups[top].push(f);
+    const parts = f.dir ? f.dir.split('/') : [];
+    const top = parts[0] || 'index';
+    if (!topGroups[top]) topGroups[top] = { files: [], subgroups: {} };
+
+    if (parts.length <= 1) {
+      // 直接位于顶级目录或根目录
+      topGroups[top].files.push(f);
+    } else {
+      // 位于二级子目录
+      const sub = parts[1];
+      if (!topGroups[top].subgroups[sub]) topGroups[top].subgroups[sub] = [];
+      topGroups[top].subgroups[sub].push(f);
+    }
   }
 
-  // 定义分组顺序
-  const order = ['index', '角色', '世界观', '地点', '组织', '主题', '剧情概要', '轶事', '其他'];
-  const sortedKeys = Object.keys(groups).sort((a, b) => {
-    const ia = order.indexOf(a);
-    const ib = order.indexOf(b);
+  // 定义顶级分组顺序
+  const topOrder = ['index', '角色', '世界观', '地点', '组织', '主题', '剧情概要', '轶事'];
+  const sortedTopKeys = Object.keys(topGroups).sort((a, b) => {
+    const ia = topOrder.indexOf(a);
+    const ib = topOrder.indexOf(b);
     return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib);
   });
 
   let html = '';
-  for (const key of sortedKeys) {
-    const list = groups[key];
-    const isIndex = key === 'index';
-    const label = isIndex ? '首页 & 索引' : key;
-    const hasCurrent = list.some(f => f.url === currentUrl);
+  for (const top of sortedTopKeys) {
+    const { files: topFiles, subgroups } = topGroups[top];
+    const isIndex = top === 'index';
+    const label = isIndex ? '首页 & 索引' : top;
+
+    // 判断当前页是否在此组
+    const allGroupFiles = [...topFiles, ...Object.values(subgroups).flat()];
+    const hasCurrent = allGroupFiles.some(f => f.url === currentUrl);
 
     html += `<div class="nav-group${hasCurrent ? '' : ' collapsed'}">`;
     html += `<div class="nav-group-title" onclick="this.parentElement.classList.toggle('collapsed')"><span class="arrow">▾</span>${escapeHtml(label)}</div>`;
     html += '<ul class="nav-list">';
-    for (const f of list) {
+
+    // 顶级文件（直接在此目录下，无子目录）
+    for (const f of topFiles) {
       const active = f.url === currentUrl ? ' active' : '';
       const title = f.meta?.title || f.name;
       html += `<li><a href="${relativeRoot(currentUrl)}${f.url}" class="${active}">${escapeHtml(title)}</a></li>`;
     }
+
+    // 二级子分组
+    const sortedSubKeys = Object.keys(subgroups).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    for (const sub of sortedSubKeys) {
+      const subFiles = subgroups[sub];
+      const subHasCurrent = subFiles.some(f => f.url === currentUrl);
+
+      html += `<li class="nav-subgroup${subHasCurrent ? ' open' : ''}">`;
+      html += `<div class="nav-subgroup-title" onclick="this.parentElement.classList.toggle('open')"><span class="subarrow">▶</span>${escapeHtml(sub)}</div>`;
+      html += '<ul class="nav-sublist">';
+      for (const f of subFiles) {
+        const active = f.url === currentUrl ? ' active' : '';
+        const title = f.meta?.title || f.name;
+        html += `<li><a href="${relativeRoot(currentUrl)}${f.url}" class="${active}">${escapeHtml(title)}</a></li>`;
+      }
+      html += '</ul></li>';
+    }
+
     html += '</ul></div>';
   }
   return html;

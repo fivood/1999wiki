@@ -158,7 +158,7 @@ html, body {
 .nav-group.collapsed .arrow { transform: rotate(-90deg); }
 .nav-group.collapsed .nav-list { display: none; }
 .nav-list { list-style: none; margin: 4px 0 10px; padding: 0 0 0 10px; }
-.nav-list li { margin: 1px 0; }
+.nav-list > li { margin: 1px 0; }
 .nav-list a {
   display: block; padding: 5px 10px;
   color: var(--text); text-decoration: none;
@@ -168,6 +168,46 @@ html, body {
 }
 .nav-list a:hover { background: var(--bg-hover); color: var(--link-hover); text-decoration: underline; }
 .nav-list a.active { background: var(--bg-hover); color: var(--accent); font-weight: 700; }
+
+/* === 二级子分组（派閥/子目录） === */
+.nav-subgroup { list-style: none; margin: 2px 0; }
+.nav-subgroup-title {
+  display: flex; align-items: center;
+  font-size: 12px; font-weight: 700;
+  color: var(--text-dim);
+  padding: 4px 8px 3px 2px;
+  cursor: pointer; user-select: none;
+  letter-spacing: 0.5px;
+  font-family: var(--font-body);
+  border-left: 2px solid var(--border-light);
+  margin-left: 2px;
+}
+.nav-subgroup-title:hover { color: var(--text); border-left-color: var(--accent); }
+.nav-subgroup-title .subarrow {
+  display: inline-block; margin-right: 5px;
+  font-size: 8px; font-family: sans-serif;
+  transition: transform 0.15s;
+  flex-shrink: 0;
+}
+.nav-subgroup:not(.open) .subarrow { transform: rotate(0deg); }
+.nav-subgroup.open .subarrow { transform: rotate(90deg); }
+.nav-subgroup:not(.open) .nav-sublist { display: none; }
+.nav-sublist {
+  list-style: none; margin: 2px 0 4px;
+  padding: 0 0 0 14px;
+  border-left: 1px dashed var(--border-light);
+  margin-left: 5px;
+}
+.nav-sublist li { margin: 0; }
+.nav-sublist a {
+  display: block; padding: 3px 8px;
+  color: var(--text); text-decoration: none;
+  font-size: 13px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  font-family: var(--font-body);
+}
+.nav-sublist a:hover { background: var(--bg-hover); color: var(--link-hover); }
+.nav-sublist a.active { background: var(--bg-hover); color: var(--accent); font-weight: 700; }
 
 /* === 面包屑 === */
 .breadcrumbs {
