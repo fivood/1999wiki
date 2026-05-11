@@ -53,6 +53,12 @@ function scanWiki(dir, base = '') {
 }
 
 const files = scanWiki(WIKI_DIR);
+
+// wiki 的 index.md 输出到 contents.html，
+// index.html 留给报纸页（根 URL 默认页）
+const indexFile = files.find(f => f.slug === 'index');
+if (indexFile) indexFile.url = 'contents.html';
+
 const slugSet = new Set(files.map(f => f.slug));
 
 /* ── 构建导航树（支持两级子分组） ── */
@@ -93,7 +99,7 @@ function buildNav(currentUrl) {
     // 判断当前页是否在此组（报纸页归入首页组）
     const allGroupFiles = [...topFiles, ...Object.values(subgroups).flat()];
     const isCurrentGroup = allGroupFiles.some(f => f.url === currentUrl)
-      || (isIndex && currentUrl === 'newspaper.html');
+      || (isIndex && (currentUrl === 'newspaper.html' || currentUrl === 'index.html'));
 
     html += `<div class="nav-group${isCurrentGroup ? ' current' : ' collapsed'}">`;
     html += `<div class="nav-group-title" onclick="this.parentElement.classList.toggle('collapsed')"><span class="arrow">▾</span>${escapeHtml(label)}</div>`;
@@ -333,11 +339,6 @@ for (const file of files) {
     .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
     .replace(/\{\{content\}\}/g, metaBar + contentHtml);
 
-  // 首页自动跳转到报纸页
-  if (file.slug === 'index') {
-    page = page.replace('</head>', '<meta http-equiv="refresh" content="0; url=newspaper.html"></head>');
-  }
-
   // 写入
   const outPath = path.join(DIST_DIR, file.url);
   ensureDir(path.dirname(outPath));
@@ -361,6 +362,8 @@ const newspaperPage = template
   .replace(/\{\{breadcrumbs\}\}/g, '')
   .replace(/\{\{content\}\}/g, newspaperHtml);
 fs.writeFileSync(path.join(DIST_DIR, 'newspaper.html'), newspaperPage, 'utf-8');
+// 同时写入根目录默认页，让 https://1999.fivood.com/ 直接显示报纸
+fs.writeFileSync(path.join(DIST_DIR, 'index.html'), newspaperPage, 'utf-8');
 
 /* ── 写入搜索索引 & 复制静态资源 ── */
 fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
