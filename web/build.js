@@ -368,10 +368,6 @@ fs.writeFileSync(path.join(DIST_DIR, 'index.html'), newspaperPage, 'utf-8');
 /* ── 写入搜索索引 & 复制静态资源 ── */
 fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
 fs.copyFileSync(CSS_PATH, path.join(DIST_DIR, 'style.css'));
-const BG_PATH = path.join(__dirname, 'bg.jpg');
-if (fs.existsSync(BG_PATH)) {
-  fs.copyFileSync(BG_PATH, path.join(DIST_DIR, 'bg.jpg'));
-}
 
 console.log(`✅ 构建完成：${files.length} 个页面 → ${DIST_DIR}`);
 console.log(`   搜索索引：${searchDocs.length} 条`);

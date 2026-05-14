@@ -2,21 +2,21 @@
 
 /* === 基础重置与变量 === */
 :root {
-  --bg: #f7f5f0;
-  --bg-elevated: #e5dfd6;
-  --bg-hover: #f1eada;
-  --border: #1a1a1a;
-  --border-light: #a8a59a;
-  --text: #1a1a1a;
-  --text-dim: #555;
-  --text-head: #000;
-  --accent: #8b1a1a;
-  --accent-hover: #b22222;
-  --link: #8b1a1a;
-  --link-hover: #b22222;
-  --wiki-link: #1a3c6c;
+  --bg: #f5f5f5;
+  --bg-elevated: #f1f1f1;
+  --bg-hover: #e8eaf6;
+  --border: #333333;
+  --border-light: #e0e0e0;
+  --text: #333333;
+  --text-dim: #666666;
+  --text-head: #1a1a1a;
+  --accent: #1e3a8a;
+  --accent-hover: #2563eb;
+  --link: #1e3a8a;
+  --link-hover: #2563eb;
+  --wiki-link: #1e3a8a;
   --warn: #8b6914;
-  --radius: 0px;
+  --radius: 4px;
   --sidebar-width: 260px;
   --header-height: 64px;
   --font-body: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif;
@@ -39,8 +39,8 @@ html, body {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--header-height);
-  background: var(--bg);
-  border-bottom: 3px double var(--border);
+  background: #fff;
+  border-bottom: 1px solid var(--border-light);
   display: flex; align-items: center;
   padding: 0 20px;
   z-index: 100;
@@ -76,7 +76,7 @@ html, body {
 }
 #searchInput {
   width: 100%;
-  background: var(--bg);
+  background: #fff;
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
   padding: 7px 12px;
@@ -92,7 +92,7 @@ html, body {
   width: min(420px, 92vw);
   max-height: 60vh;
   overflow-y: auto;
-  background: var(--bg);
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
@@ -132,12 +132,20 @@ html, body {
   flex: 1;
   margin-left: var(--sidebar-width);
   padding: 32px 40px 80px;
-  background: url('bg.jpg') repeat;
+  background-color: #fafafa;
+  background-image:
+    linear-gradient(#e8e8e8 1px, transparent 1px),
+    linear-gradient(90deg, #e8e8e8 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 article {
   max-width: 800px;
   margin: 0 auto;
+  background: #fff;
+  padding: 32px 40px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 /* === 侧边栏导航（文件夹标签页） === */
@@ -224,9 +232,9 @@ article {
 .nav-group.current .nav-group-title,
 .nav-group.current .nav-group-title::before,
 .nav-group.current .nav-group-title::after {
-  background: #5c3a1e;
+  background: var(--accent);
   color: #fff;
-  border-color: #5c3a1e;
+  border-color: var(--accent);
 }
 
 /* 标签内容区域 - 与标签头左右对齐 */
@@ -313,7 +321,10 @@ article {
 .newspaper {
   max-width: 900px;
   margin: 0 auto;
-  padding: 8px;
+  padding: 24px 32px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 /* 报头 */
@@ -329,7 +340,7 @@ article {
   letter-spacing: 3px;
   margin: 0;
   color: #fff;
-  background: #5c3a1e;
+  background: var(--accent);
   padding: 8px 20px;
   display: inline-block;
   text-transform: uppercase;
@@ -410,7 +421,7 @@ article {
   font-weight: 700;
   margin: 0 0 10px;
   line-height: 1.4;
-  background: #5c3a1e;
+  background: var(--accent);
   color: #fff;
   padding: 6px 10px;
 }
@@ -475,7 +486,8 @@ article {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
-  .newspaper { padding: 4px; }
+  .newspaper { padding: 16px 20px; }
+  article { padding: 24px 20px; }
   .masthead h1 { font-size: 22px; padding: 6px 12px; }
   .masthead-sub { font-size: 12px; letter-spacing: 3px; }
   .masthead-meta { font-size: 10px; padding: 4px; }
@@ -638,8 +650,8 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
 /* === 滚动条美化 === */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #b8b4a8; border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: #9c988c; }
+::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }
 
 /* === 选中高亮 === */
-::selection { background: rgba(139, 26, 26, 0.12); }
+::selection { background: rgba(30, 58, 138, 0.12); }
