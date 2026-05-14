@@ -217,7 +217,7 @@ function generateNewspaperHome(files) {
 
   const headline = selected[0];
   const stories = selected.slice(1);
-  const dateStr = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  const dateStr = '<span id="newspaperDate"></span>';
   const issueNum = Math.floor(Math.random() * 900) + 100;
 
   let html = `<div class="newspaper">`;
