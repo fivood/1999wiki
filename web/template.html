@@ -106,6 +106,14 @@
         searchResults.innerHTML = '';
       }
     });
+
+    /* 报纸日期：按用户本地时区显示 */
+    const newspaperDate = document.getElementById('newspaperDate');
+    if (newspaperDate) {
+      newspaperDate.textContent = new Date().toLocaleDateString('zh-CN', {
+        year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
+      });
+    }
   </script>
 </body>
 </html>

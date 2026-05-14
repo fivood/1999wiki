@@ -53,6 +53,12 @@ function scanWiki(dir, base = '') {
 }
 
 const files = scanWiki(WIKI_DIR);
+
+// wiki 的 index.md 输出到 contents.html，
+// index.html 留给报纸页（根 URL 默认页）
+const indexFile = files.find(f => f.slug === 'index');
+if (indexFile) indexFile.url = 'contents.html';
+
 const slugSet = new Set(files.map(f => f.slug));
 
 /* ── 构建导航树（支持两级子分组） ── */
@@ -90,13 +96,20 @@ function buildNav(currentUrl) {
     const isIndex = top === 'index';
     const label = isIndex ? '首页 & 索引' : top;
 
-    // 判断当前页是否在此组
+    // 判断当前页是否在此组（报纸页归入首页组）
     const allGroupFiles = [...topFiles, ...Object.values(subgroups).flat()];
-    const hasCurrent = allGroupFiles.some(f => f.url === currentUrl);
+    const isCurrentGroup = allGroupFiles.some(f => f.url === currentUrl)
+      || (isIndex && (currentUrl === 'newspaper.html' || currentUrl === 'index.html'));
 
-    html += `<div class="nav-group${hasCurrent ? '' : ' collapsed'}">`;
+    html += `<div class="nav-group${isCurrentGroup ? ' current' : ' collapsed'}">`;
     html += `<div class="nav-group-title" onclick="this.parentElement.classList.toggle('collapsed')"><span class="arrow">▾</span>${escapeHtml(label)}</div>`;
     html += '<ul class="nav-list">';
+
+    // 首页分组：加入报纸页链接
+    if (isIndex) {
+      const npActive = currentUrl === 'newspaper.html' ? ' active' : '';
+      html += `<li><a href="${relativeRoot(currentUrl)}newspaper.html" class="${npActive}">今日报纸</a></li>`;
+    }
 
     // 顶级文件（直接在此目录下，无子目录）
     for (const f of topFiles) {
@@ -180,6 +193,117 @@ function processWikiLinks(mdText, currentSlug) {
   });
 }
 
+/* ── 提取纯文本摘要 ── */
+function extractSummary(file, maxLen = 220) {
+  const raw = fs.readFileSync(file.full, 'utf-8');
+  const parsed = matter(raw);
+  let text = parsed.content
+    .replace(/^#+ .+\n?/gm, '')          // 去掉标题
+    .replace(/\[\[[^\]]+\]\]/g, '')      // 去掉 wiki link
+    .replace(/!\[.*?\]\(.*?\)/g, '')     // 去掉图片
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // 保留链接文字
+    .replace(/[*_~`>#\-|]/g, '')         // 去掉 markdown 符号
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.slice(0, maxLen) + (text.length > maxLen ? '…' : '');
+}
+
+/* ── 生成报纸首页 ── */
+function generateNewspaperHome(files) {
+  const candidates = files.filter(f => f.slug !== 'index' && f.meta?.title);
+  const shuffled = candidates.sort(() => 0.5 - Math.random());
+  const selected = shuffled.slice(0, 7);
+  if (selected.length < 3) return '';
+
+  const headline = selected[0];
+  const stories = selected.slice(1);
+  const dateStr = '<span id="newspaperDate"></span>';
+  const issueNum = Math.floor(Math.random() * 900) + 100;
+
+  let html = `<div class="newspaper">`;
+
+  // 报头
+  html += `<header class="masthead">`;
+  html += `<h1>THE REVERSE: 1999 CHRONICLE</h1>`;
+  html += `<div class="masthead-sub">重返未来：1999 剧情 Wiki</div>`;
+  html += `<div class="masthead-meta">`;
+  html += `<span>第 ${issueNum} 期</span>`;
+  html += `<span>${dateStr}</span>`;
+  html += `<span>售价 1 利齿子儿</span>`;
+  html += `</div></header>`;
+
+  // 头条
+  html += `<div class="headline-story">`;
+  html += `<div class="headline-main">`;
+  html += `<h2><a href="${headline.url}">${escapeHtml(headline.meta.title)}</a></h2>`;
+  html += `<p class="headline-summary">${escapeHtml(extractSummary(headline, 320))}</p>`;
+  html += `<a href="${headline.url}" class="read-more">阅读全文 →</a>`;
+  html += `</div>`;
+  html += `<div class="headline-side">`;
+  html += `<div class="box-ad">`;
+  html += `<div class="box-ad-title">今日简讯</div>`;
+  html += `<div class="box-ad-text">本站共收录 ${files.length} 篇词条，涵盖角色、剧情、世界观等内容。所有资料均来自游戏原作，仅供创作参考。</div>`;
+  html += `</div>`;
+  html += `</div>`;
+  html += `</div>`;
+
+  // 新闻网格（不规则布局）
+  const [s1, s2, s3, s4, s5, s6] = stories;
+  html += `<div class="news-grid">`;
+
+  // 全宽头条
+  html += `<article class="news-item news-headline">`;
+  html += `<h3><a href="${s1.url}">${escapeHtml(s1.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s1, 260))}</p>`;
+  html += `<a href="${s1.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 左中
+  html += `<article class="news-item news-left-mid">`;
+  html += `<h3><a href="${s2.url}">${escapeHtml(s2.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s2, 200))}</p>`;
+  html += `<a href="${s2.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 右中
+  html += `<article class="news-item news-right-mid">`;
+  html += `<h3><a href="${s3.url}">${escapeHtml(s3.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s3, 160))}</p>`;
+  html += `<a href="${s3.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 左下（竖长条）
+  html += `<article class="news-item news-left-low">`;
+  html += `<h3><a href="${s4.url}">${escapeHtml(s4.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s4, 240))}</p>`;
+  html += `<a href="${s4.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 右下上
+  html += `<article class="news-item news-right-up">`;
+  html += `<h3><a href="${s5.url}">${escapeHtml(s5.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s5, 180))}</p>`;
+  html += `<a href="${s5.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  // 右下下
+  html += `<article class="news-item news-right-down">`;
+  html += `<h3><a href="${s6.url}">${escapeHtml(s6.meta.title)}</a></h3>`;
+  html += `<p>${escapeHtml(extractSummary(s6, 140))}</p>`;
+  html += `<a href="${s6.url}" class="read-more">阅读全文 →</a>`;
+  html += `</article>`;
+
+  html += `</div>`;
+
+  // 底栏
+  html += `<footer class="newspaper-footer">`;
+  html += `<div>本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>`;
+  html += `</footer>`;
+
+  html += `</div>`;
+  return html;
+}
+
 /* ── 处理单个文件 ── */
 const searchDocs = [];
 
@@ -196,7 +320,7 @@ for (const file of files) {
   // 给 heading 添加 anchor id（基于纯文本内容）
   contentHtml = contentHtml.replace(/<h([1-6])>(.+?)<\/h\1>/g, (match, level, inner) => {
     const plain = inner.replace(/<[^>]+>/g, '');
-    const id = plain.toLowerCase().replace(/[^\w\u4e00-\u9fa5]+/g, '-').replace(/^-|-$/g, '');
+    const id = plain.toLowerCase().replace(/[^\w一-龥]+/g, '-').replace(/^-|-$/g, '');
     const safeId = id || 'heading-' + Math.random().toString(36).slice(2, 7);
     return `<h${level} id="${safeId}">${inner}</h${level}>`;
   });
@@ -229,7 +353,19 @@ for (const file of files) {
   });
 }
 
-/* ── 写入搜索索引 & CSS ── */
+/* ── 生成报纸首页（独立页面） ── */
+const newspaperHtml = generateNewspaperHome(files);
+const newspaperPage = template
+  .replace(/\{\{title\}\}/g, '今日报纸')
+  .replace(/\{\{root\}\}/g, '')
+  .replace(/\{\{nav\}\}/g, buildNav('newspaper.html'))
+  .replace(/\{\{breadcrumbs\}\}/g, '')
+  .replace(/\{\{content\}\}/g, newspaperHtml);
+fs.writeFileSync(path.join(DIST_DIR, 'newspaper.html'), newspaperPage, 'utf-8');
+// 同时写入根目录默认页，让 https://1999.fivood.com/ 直接显示报纸
+fs.writeFileSync(path.join(DIST_DIR, 'index.html'), newspaperPage, 'utf-8');
+
+/* ── 写入搜索索引 & 复制静态资源 ── */
 fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
 fs.copyFileSync(CSS_PATH, path.join(DIST_DIR, 'style.css'));
 

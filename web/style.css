@@ -2,21 +2,21 @@
 
 /* === 基础重置与变量 === */
 :root {
-  --bg: #f7f5f0;
-  --bg-elevated: #ece9e0;
-  --bg-hover: #e4e1d8;
-  --border: #1a1a1a;
-  --border-light: #a8a59a;
-  --text: #1a1a1a;
-  --text-dim: #555;
-  --text-head: #000;
-  --accent: #8b1a1a;
-  --accent-hover: #b22222;
-  --link: #8b1a1a;
-  --link-hover: #b22222;
-  --wiki-link: #1a3c6c;
+  --bg: #f5f5f5;
+  --bg-elevated: #f1f1f1;
+  --bg-hover: #e8eaf6;
+  --border: #333333;
+  --border-light: #e0e0e0;
+  --text: #333333;
+  --text-dim: #666666;
+  --text-head: #1a1a1a;
+  --accent: #1e3a8a;
+  --accent-hover: #2563eb;
+  --link: #1e3a8a;
+  --link-hover: #2563eb;
+  --wiki-link: #1e3a8a;
   --warn: #8b6914;
-  --radius: 0px;
+  --radius: 4px;
   --sidebar-width: 260px;
   --header-height: 64px;
   --font-body: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif;
@@ -39,8 +39,8 @@ html, body {
   position: fixed;
   top: 0; left: 0; right: 0;
   height: var(--header-height);
-  background: var(--bg);
-  border-bottom: 3px double var(--border);
+  background: #fff;
+  border-bottom: 1px solid var(--border-light);
   display: flex; align-items: center;
   padding: 0 20px;
   z-index: 100;
@@ -76,7 +76,7 @@ html, body {
 }
 #searchInput {
   width: 100%;
-  background: var(--bg);
+  background: #fff;
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
   padding: 7px 12px;
@@ -92,7 +92,7 @@ html, body {
   width: min(420px, 92vw);
   max-height: 60vh;
   overflow-y: auto;
-  background: var(--bg);
+  background: #fff;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: 0 4px 16px rgba(0,0,0,0.12);
@@ -131,24 +131,94 @@ html, body {
 .content {
   flex: 1;
   margin-left: var(--sidebar-width);
-  max-width: 800px;
   padding: 32px 40px 80px;
+  background-color: #fafafa;
+  background-image:
+    linear-gradient(#e8e8e8 1px, transparent 1px),
+    linear-gradient(90deg, #e8e8e8 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-/* === 侧边栏导航（报纸栏目感） === */
-.nav-tree { padding: 0 14px; }
-.nav-group { margin-bottom: 8px; }
+article {
+  max-width: 800px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 32px 40px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* === 侧边栏导航（文件夹标签页） === */
+.nav-tree { padding: 0 10px; }
+
+/* 每个分组是一个标签页 */
+.nav-group {
+  margin-bottom: -10px;          /* 层叠：后面的标签压住前面的 */
+  position: relative;
+  z-index: 1;
+}
+
+/* 展开的分组浮在上方 */
+.nav-group:not(.collapsed) { z-index: 5; }
+
+/* 当前分组浮在最上层 */
+.nav-group.current { z-index: 10; }
+
+/* 标签头 */
 .nav-group-title {
+  position: relative;
   display: flex; align-items: center;
   font-size: 13px; font-weight: 700;
-  color: var(--text-dim);
   text-transform: uppercase;
   letter-spacing: 1px;
-  padding: 8px 10px 6px;
+  padding: 9px 28px;
   cursor: pointer; user-select: none;
-  border-bottom: 1px solid var(--border-light);
   font-family: var(--font-body);
+  background: var(--bg);
+  border: 1.5px solid var(--border-light);
+  border-bottom: none;
+  border-radius: 10px 10px 0 0;
+  margin: 0 10px;
+  color: var(--text-dim);
+  z-index: 2;
 }
+
+/* 左斜边 */
+.nav-group-title::before {
+  content: '';
+  position: absolute;
+  bottom: -1.5px;
+  left: -3px;
+  width: 8px;
+  height: calc(100% + 1.5px);
+  background: inherit;
+  border: 1.5px solid var(--border-light);
+  border-bottom: none;
+  border-right: none;
+  border-radius: 4px 0 0 0;
+  transform: skewX(-6deg);
+  transform-origin: bottom right;
+  z-index: -1;
+}
+
+/* 右斜边 */
+.nav-group-title::after {
+  content: '';
+  position: absolute;
+  bottom: -1.5px;
+  right: -3px;
+  width: 8px;
+  height: calc(100% + 1.5px);
+  background: inherit;
+  border: 1.5px solid var(--border-light);
+  border-bottom: none;
+  border-left: none;
+  border-radius: 0 4px 0 0;
+  transform: skewX(6deg);
+  transform-origin: bottom left;
+  z-index: -1;
+}
+
 .nav-group-title:hover { color: var(--text); }
 .nav-group-title .arrow {
   display: inline-block; margin-right: 6px;
@@ -157,25 +227,53 @@ html, body {
 }
 .nav-group.collapsed .arrow { transform: rotate(-90deg); }
 .nav-group.collapsed .nav-list { display: none; }
-.nav-list { list-style: none; margin: 4px 0 10px; padding: 0 0 0 10px; }
-.nav-list > li { margin: 1px 0; }
+
+/* 当前分组：标签头深棕底（含伪元素） */
+.nav-group.current .nav-group-title,
+.nav-group.current .nav-group-title::before,
+.nav-group.current .nav-group-title::after {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+/* 标签内容区域 - 与标签头左右对齐 */
+.nav-list {
+  list-style: none;
+  margin: 0 10px;
+  padding: 10px 14px 28px;
+  background: var(--bg);
+  border: 1.5px solid var(--border-light);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  position: relative;
+  z-index: 1;
+}
+
+/* 列表项横线分割 */
+.nav-list > li {
+  margin: 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.nav-list > li:last-child { border-bottom: none; }
 .nav-list a {
-  display: block; padding: 5px 10px;
+  display: block; padding: 6px 10px;
   color: var(--text); text-decoration: none;
   font-size: 14px;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   font-family: var(--font-body);
+  border-radius: 4px;
 }
 .nav-list a:hover { background: var(--bg-hover); color: var(--link-hover); text-decoration: underline; }
 .nav-list a.active { background: var(--bg-hover); color: var(--accent); font-weight: 700; }
 
 /* === 二级子分组（派閥/子目录） === */
-.nav-subgroup { list-style: none; margin: 2px 0; }
+.nav-subgroup { list-style: none; margin: 2px 0; border-bottom: none !important; }
 .nav-subgroup-title {
   display: flex; align-items: center;
   font-size: 12px; font-weight: 700;
   color: var(--text-dim);
-  padding: 4px 8px 3px 2px;
+  padding: 5px 8px 4px 4px;
   cursor: pointer; user-select: none;
   letter-spacing: 0.5px;
   font-family: var(--font-body);
@@ -198,7 +296,7 @@ html, body {
   border-left: 1px dashed var(--border-light);
   margin-left: 5px;
 }
-.nav-sublist li { margin: 0; }
+.nav-sublist li { margin: 0; border-bottom: none !important; }
 .nav-sublist a {
   display: block; padding: 3px 8px;
   color: var(--text); text-decoration: none;
@@ -218,6 +316,204 @@ html, body {
 .breadcrumbs a { color: var(--text-dim); text-decoration: none; }
 .breadcrumbs a:hover { text-decoration: underline; color: var(--accent); }
 .breadcrumbs span { margin: 0 6px; color: var(--border-light); }
+
+/* === 报纸首页 === */
+.newspaper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 32px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+/* 报头 */
+.masthead {
+  text-align: center;
+  border-bottom: 4px double var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 24px;
+}
+.masthead h1 {
+  font-size: 38px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  margin: 0;
+  color: #fff;
+  background: var(--accent);
+  padding: 8px 20px;
+  display: inline-block;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+.masthead-sub {
+  font-size: 15px;
+  color: var(--text-dim);
+  letter-spacing: 6px;
+  margin: 10px 0 0;
+  font-weight: 400;
+}
+.masthead-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-light);
+  padding: 6px 4px;
+  margin-top: 14px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* 头条 */
+.headline-story {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 3px double var(--border);
+}
+.headline-main h2 {
+  font-size: 26px;
+  font-weight: 700;
+  margin: 0 0 12px;
+  line-height: 1.3;
+}
+.headline-main h2 a {
+  color: var(--text-head);
+  text-decoration: none;
+}
+.headline-main h2 a:hover { color: var(--accent); text-decoration: underline; }
+.headline-summary {
+  font-size: 15px;
+  line-height: 1.85;
+  text-align: justify;
+  color: var(--text);
+  margin: 0;
+  max-width: none;
+}
+.headline-main .read-more {
+  display: inline-block;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+.headline-main .read-more:hover { text-decoration: underline; }
+
+/* 新闻网格（不规则布局） */
+.news-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  grid-template-rows: auto auto auto auto;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.news-item {
+  padding: 16px;
+  border: 1px solid var(--border-light);
+  background: var(--bg);
+}
+.news-item h3 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0 0 10px;
+  line-height: 1.4;
+  background: var(--accent);
+  color: #fff;
+  padding: 6px 10px;
+}
+.news-item h3 a {
+  color: #fff;
+  text-decoration: none;
+}
+.news-item h3 a:hover { text-decoration: underline; }
+.news-item p {
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-dim);
+  margin: 0;
+  text-align: justify;
+}
+.news-item .read-more {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 700;
+}
+.news-item .read-more:hover { text-decoration: underline; }
+
+/* 网格定位 */
+.news-headline {
+  grid-column: 1 / -1;
+  grid-row: 1;
+}
+.news-left-mid {
+  grid-column: 1;
+  grid-row: 2;
+}
+.news-right-mid {
+  grid-column: 2;
+  grid-row: 2;
+}
+.news-left-low {
+  grid-column: 1;
+  grid-row: 3 / 5;
+}
+.news-right-up {
+  grid-column: 2;
+  grid-row: 3;
+}
+.news-right-down {
+  grid-column: 2;
+  grid-row: 4;
+}
+
+/* 报纸底栏 */
+.newspaper-footer {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-light);
+  padding-top: 14px;
+  margin-top: 8px;
+}
+.newspaper-footer a { color: var(--accent); }
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .newspaper { padding: 16px 20px; }
+  article { padding: 24px 20px; }
+  .masthead h1 { font-size: 22px; padding: 6px 12px; }
+  .masthead-sub { font-size: 12px; letter-spacing: 3px; }
+  .masthead-meta { font-size: 10px; padding: 4px; }
+
+  .headline-story { margin-bottom: 16px; padding-bottom: 16px; }
+  .headline-main h2 { font-size: 18px; }
+  .headline-summary { font-size: 14px; }
+
+  .news-grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto;
+    gap: 8px;
+  }
+  .news-headline,
+  .news-left-mid,
+  .news-right-mid,
+  .news-left-low,
+  .news-right-up,
+  .news-right-down {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .news-item { padding: 12px; }
+  .news-item h3 { font-size: 15px; padding: 5px 8px; }
+  .news-item p { font-size: 13px; }
+}
 
 /* === 文章排版（报纸风格） === */
 article { color: var(--text); }
@@ -354,8 +650,8 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
 /* === 滚动条美化 === */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #b8b4a8; border-radius: 0; }
-::-webkit-scrollbar-thumb:hover { background: #9c988c; }
+::-webkit-scrollbar-thumb { background: #c0c0c0; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #a0a0a0; }
 
 /* === 选中高亮 === */
-::selection { background: rgba(139, 26, 26, 0.12); }
+::selection { background: rgba(30, 58, 138, 0.12); }
