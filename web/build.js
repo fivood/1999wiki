@@ -142,8 +142,6 @@ function buildCharGallery(file, root) {
   const allCostumes = [...new Set([...Object.keys(costumeArts), ...Object.keys(costumeItems)])].sort();
   // 有立绘（场景图/L2D）的时装
   const costumePortraitList = allCostumes.filter(n => costumeArts[n]?.scene || costumeArts[n]?.L2D);
-  // 有单品图的时装
-  const costumeItemList = allCostumes.filter(n => (costumeItems[n] || []).length > 0);
 
   // ── 辅助：生成独立页卡组（每组独立作用域）────────────────────────
   const makeTabGroup = (labels, panels) => {
@@ -201,44 +199,8 @@ function buildCharGallery(file, root) {
     }
   }
 
-  // ── 单品部分 ──────────────────────────────────────────────────────
-  const hasInitial = initialItems.length > 0;
-  const totalItemGroups = (hasInitial ? 1 : 0) + costumeItemList.length;
-
-  if (totalItemGroups > 0) {
-    if (totalItemGroups > 1) {
-      // 多组：页卡（初始 / 时装A / 时装B …）
-      // 只有初始时不显示 "初始" tab（无意义），但有时装单品时需要
-      const labels = hasInitial ? ['初始', ...costumeItemList] : costumeItemList;
-      const panels = [];
-      if (hasInitial) {
-        panels.push('<div class="gallery-section"><div class="items-row">'
-          + initialItems.map(it => fig(it.url, it.label, 'item-fig', '')).join('')
-          + '</div></div>');
-      }
-      for (const name of costumeItemList) {
-        panels.push('<div class="gallery-section"><div class="items-row">'
-          + (costumeItems[name] || []).map(it => fig(it.url, it.label, 'item-fig', '')).join('')
-          + '</div></div>');
-      }
-      // 与立绘部分之间加分隔线
-      if (costumePortraitList.length > 0 || portraits.length > 0 || misc.length > 0)
-        html += '<hr class="gallery-divider">';
-      html += makeTabGroup(labels, panels);
-    } else {
-      // 只有一组：平铺显示
-      const items = hasInitial ? initialItems : (costumeItems[costumeItemList[0]] || []);
-      if (items.length) {
-        if (costumePortraitList.length > 0 || portraits.length > 0)
-          html += '<hr class="gallery-divider">';
-        html += '<div class="gallery-section"><div class="gallery-label">单品</div><div class="items-row">';
-        for (const it of items) html += fig(it.url, it.label, 'item-fig', '');
-        html += '</div></div>';
-      }
-    }
-  }
-
   html += '</div>'; // .char-gallery
+  // 单品由 injectItemsTabs() 在文章渲染后处理，画廊仅展示立绘
   return html;
 }
 
@@ -368,6 +330,73 @@ function injectInlineImages(html, inlineMap) {
     }
   }
   return html;
+}
+
+/**
+ * 对渲染后的文章 HTML，找到"单品 / 随身物件"段落的 <ul>，
+ * 按时装（初始 / 时装A / …）拆分成 gallery-tab-group。
+ * 多组时才生成页卡；只有一组则保持原样。
+ */
+function injectItemsTabs(html, inlineMap) {
+  if (!inlineMap || inlineMap.size === 0) return html;
+
+  // 从 inlineMap 推断每个 label 所属时装
+  const labelCostume = new Map();
+  for (const [label, url] of inlineMap) {
+    const fname = decodeURIComponent(url.split('/').pop()).replace(/\.(png|jpg|jpeg|webp)$/i, '');
+    if (fname.startsWith('初始_')) {
+      labelCostume.set(label, '初始');
+    } else {
+      const sep = fname.indexOf('_');
+      labelCostume.set(label, sep > 0 ? fname.slice(0, sep) : '初始');
+    }
+  }
+
+  // 找"单品"标题（h2）后的第一个 <ul>
+  const h2Re = /<h2[^>]*>[\s\S]*?单品[\s\S]*?<\/h2>/;
+  const h2Match = html.match(h2Re);
+  if (!h2Match) return html;
+
+  const h2End = html.indexOf(h2Match[0]) + h2Match[0].length;
+  const ulStart = html.indexOf('<ul>', h2End);
+  if (ulStart === -1) return html;
+  const ulEnd   = html.indexOf('</ul>', ulStart) + 5;
+  const ulInner = html.slice(ulStart + 4, ulEnd - 5);
+
+  // 提取 <li> 并按时装分组
+  const groups = new Map(); // costume → li html[]
+  const liRe = /<li>([\s\S]*?)<\/li>/g;
+  let m;
+  while ((m = liRe.exec(ulInner)) !== null) {
+    const liContent = m[1];
+    const altM = liContent.match(/item-inline-img[^>]+?alt="([^"]+)"/);
+    const label   = altM ? altM[1] : null;
+    const costume = label ? (labelCostume.get(label) || '初始') : '初始';
+    if (!groups.has(costume)) groups.set(costume, []);
+    groups.get(costume).push(m[0]);
+  }
+
+  if (groups.size <= 1) return html; // 只有一组，不需要页卡
+
+  // 过滤掉非单品组（如尤提姆用角色名做前缀；其不会出现在单品 ul，但保险起见）
+  // 只保留 '初始' 和实际时装名
+  const validCostumes = [...groups.keys()];
+
+  // 构建 gallery-tab-group HTML
+  let tabHtml = '<div class="gallery-tab-group">';
+  tabHtml += '<div class="gallery-tabs" role="tablist">';
+  validCostumes.forEach((c, i) =>
+    tabHtml += `<button class="gallery-tab${i === 0 ? ' active' : ''}" role="tab">${escapeHtml(c)}</button>`
+  );
+  tabHtml += '</div>';
+  validCostumes.forEach((c, i) => {
+    tabHtml += `<div class="gallery-panel${i === 0 ? ' active' : ''}"><ul>`;
+    tabHtml += groups.get(c).join('');
+    tabHtml += '</ul></div>';
+  });
+  tabHtml += '</div>';
+
+  return html.slice(0, ulStart) + tabHtml + html.slice(ulEnd);
 }
 
 /* ── 扫描所有 wiki 文件 ── */
@@ -706,6 +735,8 @@ async function buildAll() {
     // 行内单品 / 尤提姆图片注入
     const inlineMap = buildInlineImgMap(file, root);
     contentHtml = injectInlineImages(contentHtml, inlineMap);
+    // 单品段落按时装分组为页卡（多组时启用）
+    contentHtml = injectItemsTabs(contentHtml, inlineMap);
 
     const title = parsed.data.title || (file.slug === 'index' ? '首页' : file.name);
     const navHtml = buildNav(file.url);
