@@ -736,13 +736,6 @@ function generateNewspaperHome(files) {
       <a href="${headline.url}" class="read-more">阅读全文 →</a>
     </div>
   </div>
-  <aside class="np-brief-box">
-    <div class="np-brief-title">今日简讯</div>
-    <p class="np-brief-text">本站共收录 <strong>${files.length}</strong> 篇词条，涵盖角色、剧情、世界观等内容。</p>
-    <p class="np-brief-text">所有资料均来自游戏原作，仅供创作参考。</p>
-    <hr>
-    <p class="np-brief-text">点击任意图片可放大查看。</p>
-  </aside>
 </div>`;
 
   // ── 今日要闻分割线 ────────────────────────────────────────────────
@@ -762,10 +755,32 @@ function generateNewspaperHome(files) {
     html += `</div>`;
   }
 
+  // ── 今日简讯（右下角）──────────────────────────────────────────
+  html += `<div class="np-bottom-bar">
+  <aside class="np-brief-box">
+    <div class="np-brief-title">今日简讯</div>
+    <p class="np-brief-text">本站共收录 <strong>${files.length}</strong> 篇词条，涵盖角色、剧情、世界观等内容。</p>
+    <p class="np-brief-text">所有资料均来自游戏原作，仅供创作参考。</p>
+    <hr>
+    <p class="np-brief-text">点击任意图片可放大查看。</p>
+  </aside>
+</div>`;
+
   // ── 底栏 ─────────────────────────────────────────────────────────
   html += `<footer class="newspaper-footer">
   <div>本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>
 </footer>`;
+
+  // ── 每日模板选择脚本（基于日期，0/1/2 循环）────────────────────
+  html += `<script>
+(function(){
+  var d = new Date();
+  var seed = d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  var tmpl = seed % 3;
+  var el = document.querySelector('.newspaper');
+  if (el) el.dataset.tmpl = tmpl;
+})();
+</script>`;
 
   html += `</div>`;
   return html;
