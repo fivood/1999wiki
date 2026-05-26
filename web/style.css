@@ -615,7 +615,7 @@ article {
   border-bottom: 2px solid var(--border);
 }
 .newspaper[data-tmpl="1"] .np-grid-top { grid-template-columns: repeat(2, 1fr); }
-.newspaper[data-tmpl="1"] .np-grid-bot { grid-template-columns: repeat(3, 1fr); }
+.newspaper[data-tmpl="1"] .np-grid-bot { grid-template-columns: repeat(4, 1fr); }
 .newspaper[data-tmpl="1"] .np-story { height: 178px; }
 .newspaper[data-tmpl="1"] .np-grid-bot .np-story { height: 148px; }
 .newspaper[data-tmpl="1"] .np-story h3 { font-size: 15px; }

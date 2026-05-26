@@ -688,7 +688,7 @@ function generateNewspaperHome(files) {
   const pool = [...withImg, ...noImg];
   if (pool.length < 3) return '';
 
-  const selected = pool.slice(0, 7);
+  const selected = pool.slice(0, 8);
   const [headline, ...stories] = selected;
 
   const dateStr  = '<span id="newspaperDate"></span>';
