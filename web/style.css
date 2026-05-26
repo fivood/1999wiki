@@ -647,6 +647,85 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   article th, article td { padding: 6px 8px; }
 }
 
+/* === 角色画廊 === */
+.char-gallery {
+  margin-bottom: 28px;
+  padding-bottom: 24px;
+  border-bottom: 3px double var(--border);
+}
+.gallery-section { margin-bottom: 18px; }
+.gallery-section:last-child { margin-bottom: 0; }
+.gallery-label {
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid var(--border-light);
+  padding-bottom: 4px; margin-bottom: 10px;
+}
+/* 主立绘横向滚动行 */
+.portraits-row {
+  display: flex; flex-wrap: nowrap;
+  gap: 12px; overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: thin;
+}
+.portrait-fig {
+  flex-shrink: 0; margin: 0; text-align: center;
+}
+.portrait-fig img {
+  max-height: 240px; width: auto; display: block;
+  cursor: zoom-in;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  transition: opacity .15s;
+}
+.portrait-fig img:hover { opacity: .82; }
+.portrait-fig figcaption {
+  font-size: 11px; color: var(--text-dim); margin-top: 4px;
+}
+/* 单品小图行 */
+.items-row {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start;
+}
+.item-fig { margin: 0; text-align: center; }
+.item-fig img {
+  max-height: 88px; width: auto; display: block;
+  cursor: zoom-in;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  transition: opacity .15s;
+}
+.item-fig img:hover { opacity: .82; }
+.item-fig figcaption {
+  font-size: 10px; color: var(--text-dim); margin-top: 3px;
+  max-width: 100px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+/* 时装区块 */
+.costume-section {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+}
+.costume-layout {
+  display: flex; flex-wrap: wrap;
+  gap: 16px; align-items: flex-start;
+}
+.costume-arts {
+  display: flex; gap: 10px; align-items: flex-end; flex-shrink: 0;
+}
+.scene-fig img  { max-height: 180px; width: auto; }
+.costume-items  { align-self: center; }
+
+/* 移动端：立绘允许单列换行 */
+@media (max-width: 768px) {
+  .portraits-row { flex-wrap: wrap; }
+  .portrait-fig img { max-height: 160px; }
+  .item-fig img { max-height: 70px; }
+  .scene-fig img { max-height: 130px; }
+}
+
 /* === 滚动条美化 === */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

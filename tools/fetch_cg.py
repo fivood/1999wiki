@@ -196,7 +196,7 @@ def discover_activity_versions() -> list[str]:
         if status == 200:
             versions.append(ver)
             miss = 0
-            print(f"    ✓ {ver}")
+            print(f"    + {ver}")
         else:
             miss += 1
             if miss >= 3:

@@ -24,6 +24,5 @@ Thumbs.db
 # Claude Code
 .claude/
 
-# 原始图片资源（体积大，不入库）
-raw/立绘/
+# CG过场图（体积大，仅本地参考）
 raw/CG/

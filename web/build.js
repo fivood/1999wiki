@@ -4,6 +4,7 @@ const matter = require('gray-matter');
 const { marked } = require('marked');
 
 const WIKI_DIR = path.join(__dirname, '..', 'wiki');
+const RAW_DIR  = path.join(__dirname, '..', 'raw');
 const DIST_DIR = path.join(__dirname, 'dist');
 const TEMPLATE_PATH = path.join(__dirname, 'template.html');
 const CSS_PATH = path.join(__dirname, 'style.css');
@@ -26,6 +27,166 @@ function escapeHtml(str) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+}
+
+/* ── 立绘画廊 ── */
+const IMG_EXTS = /\.(png|jpg|jpeg|webp)$/i;
+
+function copyImgIfMissing(src, dest) {
+  if (!fs.existsSync(dest)) {
+    ensureDir(path.dirname(dest));
+    fs.copyFileSync(src, dest);
+  }
+}
+
+/** 将路径各段分别 encodeURIComponent，再用 / 拼接 */
+function encodeUrlPath(...segments) {
+  return segments.map(s => encodeURIComponent(s)).join('/');
+}
+
+function imgTag(url, label, cls = '') {
+  const alt = escapeHtml(label);
+  return `<img src="${url}" alt="${alt}" loading="lazy" class="lb-trigger${cls ? ' ' + cls : ''}" data-src="${url}">`;
+}
+
+/**
+ * 为角色/npc 词条生成画廊 HTML，并把图片 copy 到 dist。
+ * 命名规则：
+ *   {角色名}_*.ext          → 主立绘
+ *   衣着_{时装名}.ext        → 时装场景图
+ *   衣着_{时装名}_L2D.ext    → 时装站绘
+ *   {时装名}_{单品名}.ext    → 时装单品（时装名从衣着_*中自动发现）
+ *   初始_{单品名}.ext        → 初始单品
+ *   其他                    → 附图
+ */
+function buildCharGallery(file, root) {
+  const type = file.meta?.type;
+  if (type !== 'character' && type !== 'npc') return '';
+
+  const parts = file.slug.split('/');
+  if (parts[0] !== '角色' || parts.length < 3) return '';
+  const org = parts[1];
+  const charName = parts[2];
+
+  const srcDir = path.join(RAW_DIR, '立绘', org, charName);
+  if (!fs.existsSync(srcDir)) return '';
+
+  const imgFiles = fs.readdirSync(srcDir)
+    .filter(f => IMG_EXTS.test(f))
+    .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+  if (!imgFiles.length) return '';
+
+  // 复制到 dist
+  const distDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
+  for (const f of imgFiles) copyImgIfMissing(path.join(srcDir, f), path.join(distDir, f));
+
+  // 构造 URL 前缀（相对于当前页面的根）
+  const urlBase = `${root}assets/${encodeUrlPath('立绘', org, charName)}/`;
+
+  // ── 分类 ──────────────────────────────────────────────────────────
+  const portraits   = [];                // {url, label}
+  const costumeArts = {};                // name → {scene?, L2D?}
+  const costumeItems = {};               // name → [{url, label}]
+  const initialItems = [];
+  const misc        = [];
+
+  // 先收集时装名，供后续匹配单品用
+  const costumeNames = new Set();
+  for (const f of imgFiles) {
+    const stem = f.replace(IMG_EXTS, '');
+    if (stem.startsWith('衣着_')) {
+      const rest = stem.slice(3);
+      costumeNames.add(rest.endsWith('_L2D') ? rest.slice(0, -4) : rest);
+    }
+  }
+
+  for (const f of imgFiles) {
+    const stem  = f.replace(IMG_EXTS, '');
+    const url   = urlBase + encodeURIComponent(f);
+
+    if (stem === charName || stem.startsWith(charName + '_')) {
+      portraits.push({ url, label: stem.replace(charName + '_', '') || charName });
+
+    } else if (stem.startsWith('衣着_')) {
+      const rest = stem.slice(3);
+      const isL2D = rest.endsWith('_L2D');
+      const name  = isL2D ? rest.slice(0, -4) : rest;
+      if (!costumeArts[name]) costumeArts[name] = {};
+      costumeArts[name][isL2D ? 'L2D' : 'scene'] = { url, label: name };
+
+    } else if (stem.startsWith('初始_')) {
+      initialItems.push({ url, label: stem.slice(3) });
+
+    } else {
+      const sep = stem.indexOf('_');
+      const prefix = sep > 0 ? stem.slice(0, sep) : '';
+      if (prefix && costumeNames.has(prefix)) {
+        if (!costumeItems[prefix]) costumeItems[prefix] = [];
+        costumeItems[prefix].push({ url, label: stem.slice(sep + 1) });
+      } else {
+        misc.push({ url, label: stem });
+      }
+    }
+  }
+
+  // ── 构建 HTML ─────────────────────────────────────────────────────
+  const fig = (url, label, figCls, imgCls) =>
+    `<figure class="${figCls}">${imgTag(url, label, imgCls)}<figcaption>${escapeHtml(label)}</figcaption></figure>`;
+
+  let html = '<div class="char-gallery">';
+
+  // 主立绘
+  if (portraits.length) {
+    html += '<div class="gallery-section">';
+    html += '<div class="gallery-label">立绘</div>';
+    html += '<div class="portraits-row">';
+    for (const p of portraits) html += fig(p.url, p.label, 'portrait-fig', '');
+    html += '</div></div>';
+  }
+
+  // 初始单品
+  if (initialItems.length) {
+    html += '<div class="gallery-section">';
+    html += '<div class="gallery-label">初始单品</div>';
+    html += '<div class="items-row">';
+    for (const it of initialItems) html += fig(it.url, it.label, 'item-fig', '');
+    html += '</div></div>';
+  }
+
+  // 时装（按时装名排序）
+  const allCostumes = [...new Set([...Object.keys(costumeArts), ...Object.keys(costumeItems)])].sort();
+  for (const name of allCostumes) {
+    const arts  = costumeArts[name]  || {};
+    const items = costumeItems[name] || [];
+    html += `<div class="gallery-section costume-section">`;
+    html += `<div class="gallery-label">时装 · ${escapeHtml(name)}</div>`;
+    html += '<div class="costume-layout">';
+
+    if (arts.scene || arts.L2D) {
+      html += '<div class="costume-arts">';
+      if (arts.scene) html += fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '');
+      if (arts.L2D)   html += fig(arts.L2D.url,   '立绘',   'portrait-fig', '');
+      html += '</div>';
+    }
+    if (items.length) {
+      html += '<div class="items-row costume-items">';
+      for (const it of items) html += fig(it.url, it.label, 'item-fig', '');
+      html += '</div>';
+    }
+    html += '</div></div>';
+  }
+
+  // 附图（剧情截图等）
+  if (misc.length) {
+    html += '<div class="gallery-section">';
+    html += '<div class="gallery-label">附图</div>';
+    html += '<div class="portraits-row">';
+    for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
+    html += '</div></div>';
+  }
+
+  html += '</div>'; // .char-gallery
+  return html;
 }
 
 /* ── 扫描所有 wiki 文件 ── */
@@ -331,13 +492,14 @@ for (const file of files) {
   const navHtml = buildNav(file.url);
   const breadcrumbs = buildBreadcrumbs(file.slug, root);
   const metaBar = buildMetaBar(parsed.data);
+  const gallery = buildCharGallery(file, root);
 
   let page = template
     .replace(/\{\{title\}\}/g, escapeHtml(title))
     .replace(/\{\{root\}\}/g, root)
     .replace(/\{\{nav\}\}/g, navHtml)
     .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
-    .replace(/\{\{content\}\}/g, metaBar + contentHtml);
+    .replace(/\{\{content\}\}/g, metaBar + gallery + contentHtml);
 
   // 写入
   const outPath = path.join(DIST_DIR, file.url);
