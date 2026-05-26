@@ -816,14 +816,18 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
 /* 行内单品 / 尤提姆图片 */
 .item-inline-img {
   float: left;
-  max-height: 80px;
-  width: auto;
-  margin: 2px 12px 6px 0;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  object-position: center;
+  margin: 2px 14px 4px 0;
   cursor: zoom-in;
   border: 1px solid var(--border-light);
   border-radius: var(--radius);
+  background: var(--bg-elevated); /* 让 contain 留白区域不显突兀 */
   transition: opacity .15s;
   display: block;
+  flex-shrink: 0;
 }
 .item-inline-img:hover { opacity: .82; }
 
@@ -838,7 +842,7 @@ article li:has(.item-inline-img) {
   .portrait-fig img { max-height: 160px; }
   .item-fig img { max-height: 70px; }
   .scene-fig img { max-height: 130px; }
-  .item-inline-img { max-height: 60px; margin-right: 8px; }
+  .item-inline-img { width: 56px; height: 56px; margin-right: 8px; }
 }
 
 /* === 滚动条美化 === */
