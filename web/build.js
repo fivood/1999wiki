@@ -399,6 +399,45 @@ function injectItemsTabs(html, inlineMap) {
   return html.slice(0, ulStart) + tabHtml + html.slice(ulEnd);
 }
 
+/**
+ * 为非角色页面生成图集（若存在 raw/剧情图/{pageName}/ 目录）。
+ * 将图片 copy 到 dist/assets/剧情图/{pageName}/，返回 HTML。
+ */
+function buildPageGallery(file, root) {
+  // 角色词条由 buildCharGallery 负责
+  const type = file.meta?.type;
+  if (type === 'character' || type === 'npc') return '';
+
+  const pageName = file.slug.split('/').pop();
+  const srcDir = path.join(RAW_DIR, '剧情图', pageName);
+  if (!fs.existsSync(srcDir)) return '';
+
+  const imgFiles = fs.readdirSync(srcDir)
+    .filter(f => IMG_EXTS.test(f))
+    .sort((a, b) => a.localeCompare(b, 'zh-CN'));
+  if (!imgFiles.length) return '';
+
+  const distDir = path.join(DIST_DIR, 'assets', '剧情图', pageName);
+  for (const f of imgFiles) copyImgIfMissing(path.join(srcDir, f), path.join(distDir, f));
+
+  const urlBase = `${root}assets/${encodeUrlPath('剧情图', pageName)}/`;
+
+  let html = '<div class="page-gallery">';
+  html += '<div class="gallery-label">图集</div>';
+  html += '<div class="page-gallery-grid">';
+  for (const f of imgFiles) {
+    const stem = f.replace(IMG_EXTS, '');
+    const url  = urlBase + encodeURIComponent(f);
+    const alt  = escapeHtml(stem);
+    html += `<figure class="page-gallery-fig">`;
+    html += `<img src="${url}" alt="${alt}" loading="lazy" class="lb-trigger" data-src="${url}">`;
+    html += `<figcaption>${alt}</figcaption>`;
+    html += `</figure>`;
+  }
+  html += '</div></div>';
+  return html;
+}
+
 /* ── 扫描所有 wiki 文件 ── */
 function scanWiki(dir, base = '') {
   const entries = [];
@@ -742,7 +781,8 @@ async function buildAll() {
     const navHtml = buildNav(file.url);
     const breadcrumbs = buildBreadcrumbs(file.slug, root);
     const metaBar = buildMetaBar(parsed.data);
-    const gallery   = buildCharGallery(file, root);
+    const gallery     = buildCharGallery(file, root);
+    const pageGallery = buildPageGallery(file, root);
     // watermark 现在是 {{watermark}} 独立槽位（.content 层兄弟元素）
     const watermark = await buildCharWatermark(file, root);
 
@@ -752,7 +792,7 @@ async function buildAll() {
       .replace(/\{\{nav\}\}/g, navHtml)
       .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
       .replace(/\{\{watermark\}\}/g, watermark)
-      .replace(/\{\{content\}\}/g, metaBar + gallery + contentHtml);
+      .replace(/\{\{content\}\}/g, metaBar + gallery + pageGallery + contentHtml);
 
     // 写入
     const outPath = path.join(DIST_DIR, file.url);
