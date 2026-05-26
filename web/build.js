@@ -400,41 +400,66 @@ function injectItemsTabs(html, inlineMap) {
 }
 
 /**
- * 为非角色页面生成图集（若存在 raw/剧情图/{pageName}/ 目录）。
- * 将图片 copy 到 dist/assets/剧情图/{pageName}/，返回 HTML。
+ * 为非角色页面收集剧情图（raw/剧情图/{pageName}/），
+ * 返回 stem→url 映射，供 injectStoryImages 使用。
  */
-function buildPageGallery(file, root) {
-  // 角色词条由 buildCharGallery 负责
+function buildStoryImgMap(file, root) {
   const type = file.meta?.type;
-  if (type === 'character' || type === 'npc') return '';
+  if (type === 'character' || type === 'npc') return new Map();
 
   const pageName = file.slug.split('/').pop();
   const srcDir = path.join(RAW_DIR, '剧情图', pageName);
-  if (!fs.existsSync(srcDir)) return '';
+  if (!fs.existsSync(srcDir)) return new Map();
 
-  const imgFiles = fs.readdirSync(srcDir)
-    .filter(f => IMG_EXTS.test(f))
-    .sort((a, b) => a.localeCompare(b, 'zh-CN'));
-  if (!imgFiles.length) return '';
+  const imgFiles = fs.readdirSync(srcDir).filter(f => IMG_EXTS.test(f));
+  if (!imgFiles.length) return new Map();
 
   const distDir = path.join(DIST_DIR, 'assets', '剧情图', pageName);
   for (const f of imgFiles) copyImgIfMissing(path.join(srcDir, f), path.join(distDir, f));
 
   const urlBase = `${root}assets/${encodeUrlPath('剧情图', pageName)}/`;
-
-  let html = '<div class="page-gallery">';
-  html += '<div class="gallery-label">图集</div>';
-  html += '<div class="page-gallery-grid">';
+  const map = new Map();
   for (const f of imgFiles) {
     const stem = f.replace(IMG_EXTS, '');
-    const url  = urlBase + encodeURIComponent(f);
-    const alt  = escapeHtml(stem);
-    html += `<figure class="page-gallery-fig">`;
-    html += `<img src="${url}" alt="${alt}" loading="lazy" class="lb-trigger" data-src="${url}">`;
-    html += `<figcaption>${alt}</figcaption>`;
-    html += `</figure>`;
+    map.set(stem, urlBase + encodeURIComponent(f));
   }
-  html += '</div></div>';
+  return map;
+}
+
+/**
+ * 在渲染后的文章 HTML 中注入剧情图：
+ *   1. 找到与 storyImgMap 键名匹配的 <h3> 标题，在其后注入 float-left 小图。
+ *      匹配规则：h3 纯文本以 stem 开头（忽略副标题、【】标注）。
+ *   2. 把 {{storyimg:name}} 或 <p>{{storyimg:name}}</p> 占位符替换为居中大图。
+ */
+function injectStoryImages(html, storyImgMap) {
+  if (!storyImgMap || storyImgMap.size === 0) return html;
+
+  // 1. h3 自动注入 float-left 图（在 </h3> 后插入）
+  html = html.replace(/(<h3[^>]*>)([\s\S]*?)(<\/h3>)/g, (match, open, inner, close) => {
+    const plain = inner.replace(/<[^>]+>/g, '').trim();
+    for (const [stem, url] of storyImgMap) {
+      if (plain.startsWith(stem)) {
+        const fig = `<figure class="story-img-float">`
+          + `<img src="${url}" alt="${escapeHtml(stem)}" loading="lazy" class="lb-trigger" data-src="${url}">`
+          + `</figure>`;
+        return match + fig;
+      }
+    }
+    return match;
+  });
+
+  // 2. {{storyimg:name}} 占位符 → 居中展示图
+  const placeholder = (name) => {
+    const url = storyImgMap.get(name.trim());
+    if (!url) return '';
+    return `<figure class="story-img-block">`
+      + `<img src="${url}" alt="${escapeHtml(name.trim())}" loading="lazy" class="lb-trigger" data-src="${url}">`
+      + `</figure>`;
+  };
+  html = html.replace(/<p>\{\{storyimg:([^}]+)\}\}<\/p>/g, (_, name) => placeholder(name));
+  html = html.replace(/\{\{storyimg:([^}]+)\}\}/g, (_, name) => placeholder(name));
+
   return html;
 }
 
@@ -781,10 +806,13 @@ async function buildAll() {
     const navHtml = buildNav(file.url);
     const breadcrumbs = buildBreadcrumbs(file.slug, root);
     const metaBar = buildMetaBar(parsed.data);
-    const gallery     = buildCharGallery(file, root);
-    const pageGallery = buildPageGallery(file, root);
+    const gallery      = buildCharGallery(file, root);
+    const storyImgMap  = buildStoryImgMap(file, root);
     // watermark 现在是 {{watermark}} 独立槽位（.content 层兄弟元素）
     const watermark = await buildCharWatermark(file, root);
+
+    // 剧情图行内注入（h3 自动 float-left + {{storyimg:}} 占位符）
+    contentHtml = injectStoryImages(contentHtml, storyImgMap);
 
     let page = template
       .replace(/\{\{title\}\}/g, escapeHtml(title))
@@ -792,7 +820,7 @@ async function buildAll() {
       .replace(/\{\{nav\}\}/g, navHtml)
       .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
       .replace(/\{\{watermark\}\}/g, watermark)
-      .replace(/\{\{content\}\}/g, metaBar + gallery + pageGallery + contentHtml);
+      .replace(/\{\{content\}\}/g, metaBar + gallery + contentHtml);
 
     // 写入
     const outPath = path.join(DIST_DIR, file.url);

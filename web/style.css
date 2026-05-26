@@ -800,39 +800,46 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   margin: 14px 0 16px;
 }
 
-/* === 剧情图集（非角色页面） === */
-.page-gallery {
-  margin-bottom: 28px;
-  padding-bottom: 24px;
-  border-bottom: 3px double var(--border);
-}
-.page-gallery-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 8px;
-}
-.page-gallery-fig {
-  margin: 0;
-  overflow: hidden;
+/* === 剧情图行内注入 === */
+/* float-left：跟随 h3 标题，图文并排 */
+.story-img-float {
+  float: left;
+  margin: 3px 20px 10px 0;
+  max-width: 180px;
   border-radius: var(--radius);
   border: 1px solid var(--border-light);
   background: var(--bg-elevated);
+  clear: left;
 }
-.page-gallery-fig img {
+.story-img-float img {
   width: 100%;
-  height: 140px;
-  object-fit: cover;
   display: block;
   cursor: zoom-in;
+  border-radius: var(--radius);
   transition: opacity 0.15s;
 }
-.page-gallery-fig img:hover { opacity: 0.88; }
-.page-gallery-fig figcaption {
-  font-size: 11px;
-  color: var(--text-dim);
-  padding: 4px 8px 5px;
+.story-img-float img:hover { opacity: 0.88; }
+/* block：{{storyimg:}} 占位符，居中展示 */
+.story-img-block {
+  clear: both;
+  margin: 28px auto;
   text-align: center;
-  line-height: 1.3;
+}
+.story-img-block img {
+  max-width: 640px;
+  width: 100%;
+  border-radius: var(--radius);
+  cursor: zoom-in;
+  border: 1px solid var(--border-light);
+}
+/* 新的 h2/h3 前自动清除浮动 */
+article h2, article h3 { clear: both; }
+@media (max-width: 768px) {
+  .story-img-float {
+    float: none;
+    max-width: 100%;
+    margin: 0 0 14px;
+  }
 }
 
 /* === 角色画廊 === */
