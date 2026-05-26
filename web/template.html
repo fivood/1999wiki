@@ -113,16 +113,15 @@
       }
     });
 
-    /* 画廊页卡切换 */
+    /* 画廊页卡切换（作用域限定在各自 gallery-tab-group，立绘与单品互不干扰） */
     document.addEventListener('click', e => {
       const tab = e.target.closest('.gallery-tab');
       if (!tab) return;
-      const tabList = tab.closest('.gallery-tabs');
-      const gallery = tab.closest('.char-gallery');
-      if (!tabList || !gallery) return;
-      const idx = [...tabList.querySelectorAll('.gallery-tab')].indexOf(tab);
-      tabList.querySelectorAll('.gallery-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
-      gallery.querySelectorAll('.gallery-panel').forEach((p, i) => p.classList.toggle('active', i === idx));
+      const group = tab.closest('.gallery-tab-group');
+      if (!group) return;
+      const idx = [...group.querySelectorAll(':scope > .gallery-tabs > .gallery-tab')].indexOf(tab);
+      group.querySelectorAll(':scope > .gallery-tabs > .gallery-tab').forEach((t, i) => t.classList.toggle('active', i === idx));
+      group.querySelectorAll(':scope > .gallery-panel').forEach((p, i) => p.classList.toggle('active', i === idx));
     });
 
     /* 灯箱 */

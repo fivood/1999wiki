@@ -667,19 +667,22 @@ article pre {
 }
 article pre code { background: none; padding: 0; color: var(--text); border: none; }
 
-/* === Frontmatter 信息条 === */
+/* === Frontmatter 信息条（弱化：小字灰色，不抢焦点） === */
 .meta-bar {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  margin-bottom: 20px; font-size: 13px;
+  display: flex; flex-wrap: wrap; gap: 0;
+  margin-bottom: 14px; font-size: 11px;
   font-family: var(--font-body);
+  color: var(--text-dim);
+  opacity: 0.72;
 }
 .meta-tag {
-  background: var(--bg-elevated);
-  border: 1px solid var(--border-light);
-  padding: 3px 10px;
-  color: var(--text-dim);
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
 }
-.meta-tag .label { color: var(--accent); font-weight: 700; margin-right: 4px; }
+.meta-tag:not(:last-child)::after { content: ' · '; margin: 0 4px; color: var(--border-light); }
+.meta-tag .label { color: inherit; font-weight: 600; margin-right: 3px; }
 
 /* === 页脚 === */
 .page-footer {
@@ -756,31 +759,46 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
 }
 
 /* === 画廊页卡 === */
+.gallery-tab-group { /* 独立作用域容器 */ }
 .gallery-tabs {
   display: flex;
   flex-wrap: wrap;
-  border-bottom: 2px solid var(--border-light);
-  margin-bottom: 12px;
-  gap: 0;
+  gap: 6px;
+  margin-bottom: 14px;
 }
 .gallery-tab {
-  padding: 5px 16px;
+  padding: 4px 14px;
   font-size: 12px;
   font-weight: 700;
   font-family: var(--font-body);
   letter-spacing: 0.5px;
   color: var(--text-dim);
   cursor: pointer;
-  background: none;
-  border: none;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px; /* 压住父级底边线 */
-  transition: color 0.15s, border-color 0.15s;
+  background: var(--bg-elevated);
+  border: 1.5px solid var(--border-light);
+  border-radius: 20px; /* pill */
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  line-height: 1.6;
 }
-.gallery-tab:hover { color: var(--text); }
-.gallery-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.gallery-tab:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.gallery-tab.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
 .gallery-panel { display: none; }
 .gallery-panel.active { display: block; }
+
+/* 立绘与单品两个 tab-group 之间的分隔线 */
+.gallery-divider {
+  border: none;
+  border-top: 1px solid var(--border-light);
+  margin: 14px 0 16px;
+}
 
 /* === 角色画廊 === */
 .char-gallery {

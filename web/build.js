@@ -139,64 +139,102 @@ function buildCharGallery(file, root) {
   const fig = (url, label, figCls, imgCls) =>
     `<figure class="${figCls}">${imgTag(url, label, imgCls)}<figcaption>${escapeHtml(label)}</figcaption></figure>`;
 
-  // 有视觉立绘（场景图或L2D）的时装列表
   const allCostumes = [...new Set([...Object.keys(costumeArts), ...Object.keys(costumeItems)])].sort();
-  const costumeTabList = allCostumes.filter(n => costumeArts[n]?.scene || costumeArts[n]?.L2D);
-  const useTabs = costumeTabList.length > 0;
+  // 有立绘（场景图/L2D）的时装
+  const costumePortraitList = allCostumes.filter(n => costumeArts[n]?.scene || costumeArts[n]?.L2D);
+  // 有单品图的时装
+  const costumeItemList = allCostumes.filter(n => (costumeItems[n] || []).length > 0);
+
+  // ── 辅助：生成独立页卡组（每组独立作用域）────────────────────────
+  const makeTabGroup = (labels, panels) => {
+    let h = '<div class="gallery-tab-group">';
+    h += '<div class="gallery-tabs" role="tablist">';
+    labels.forEach((l, i) =>
+      h += `<button class="gallery-tab${i === 0 ? ' active' : ''}" role="tab">${escapeHtml(l)}</button>`
+    );
+    h += '</div>';
+    panels.forEach((c, i) =>
+      h += `<div class="gallery-panel${i === 0 ? ' active' : ''}">${c}</div>`
+    );
+    h += '</div>';
+    return h;
+  };
 
   let html = '<div class="char-gallery">';
 
-  if (useTabs) {
-    // ── 页卡模式：立绘 / 时装A / 时装B … ────────────────────────────
-    html += '<div class="gallery-tabs" role="tablist">';
-    html += '<button class="gallery-tab active" role="tab">立绘</button>';
-    for (const name of costumeTabList)
-      html += `<button class="gallery-tab" role="tab">${escapeHtml(name)}</button>`;
-    html += '</div>';
-
-    // Panel 0：主立绘 + 附图
-    html += '<div class="gallery-panel active">';
-    if (portraits.length) {
-      html += '<div class="gallery-section"><div class="portraits-row">';
-      for (const p of portraits) html += fig(p.url, p.label, 'portrait-fig', '');
-      html += '</div></div>';
-    }
-    if (misc.length) {
-      html += '<div class="gallery-section">';
-      html += '<div class="gallery-label">附图</div>';
-      html += '<div class="portraits-row">';
-      for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
-      html += '</div></div>';
-    }
-    html += '</div>';
-
-    // Panel N：各时装
-    for (const name of costumeTabList) {
+  // ── 立绘部分 ──────────────────────────────────────────────────────
+  if (costumePortraitList.length > 0) {
+    // 有时装立绘：页卡
+    const portraitPanelHtml = (() => {
+      let p = '';
+      if (portraits.length) {
+        p += '<div class="gallery-section"><div class="portraits-row">';
+        for (const x of portraits) p += fig(x.url, x.label, 'portrait-fig', '');
+        p += '</div></div>';
+      }
+      if (misc.length) {
+        p += '<div class="gallery-section"><div class="gallery-label">附图</div><div class="portraits-row">';
+        for (const m of misc) p += fig(m.url, m.label, 'portrait-fig', '');
+        p += '</div></div>';
+      }
+      return p;
+    })();
+    const costumePanels = costumePortraitList.map(name => {
       const arts = costumeArts[name] || {};
-      html += '<div class="gallery-panel">';
-      html += '<div class="gallery-section costume-section">';
-      html += '<div class="costume-layout"><div class="costume-arts">';
-      if (arts.scene) html += fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '');
-      if (arts.L2D)   html += fig(arts.L2D.url,   '立绘',   'portrait-fig', '');
-      html += '</div></div></div>';
-      html += '</div>';
-    }
-
+      return '<div class="gallery-section costume-section"><div class="costume-layout"><div class="costume-arts">'
+        + (arts.scene ? fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '') : '')
+        + (arts.L2D   ? fig(arts.L2D.url,   '立绘',   'portrait-fig', '') : '')
+        + '</div></div></div>';
+    });
+    html += makeTabGroup(['立绘', ...costumePortraitList], [portraitPanelHtml, ...costumePanels]);
   } else {
-    // ── 平铺模式（无时装） ────────────────────────────────────────
+    // 无时装：平铺
     if (portraits.length) {
-      html += '<div class="gallery-section">';
-      html += '<div class="gallery-label">立绘</div>';
-      html += '<div class="portraits-row">';
+      html += '<div class="gallery-section"><div class="gallery-label">立绘</div><div class="portraits-row">';
       for (const p of portraits) html += fig(p.url, p.label, 'portrait-fig', '');
       html += '</div></div>';
     }
     if (misc.length) {
-      html += '<div class="gallery-section">';
-      html += '<div class="gallery-label">附图</div>';
-      html += '<div class="portraits-row">';
+      html += '<div class="gallery-section"><div class="gallery-label">附图</div><div class="portraits-row">';
       for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
       html += '</div></div>';
+    }
+  }
+
+  // ── 单品部分 ──────────────────────────────────────────────────────
+  const hasInitial = initialItems.length > 0;
+  const totalItemGroups = (hasInitial ? 1 : 0) + costumeItemList.length;
+
+  if (totalItemGroups > 0) {
+    if (totalItemGroups > 1) {
+      // 多组：页卡（初始 / 时装A / 时装B …）
+      // 只有初始时不显示 "初始" tab（无意义），但有时装单品时需要
+      const labels = hasInitial ? ['初始', ...costumeItemList] : costumeItemList;
+      const panels = [];
+      if (hasInitial) {
+        panels.push('<div class="gallery-section"><div class="items-row">'
+          + initialItems.map(it => fig(it.url, it.label, 'item-fig', '')).join('')
+          + '</div></div>');
+      }
+      for (const name of costumeItemList) {
+        panels.push('<div class="gallery-section"><div class="items-row">'
+          + (costumeItems[name] || []).map(it => fig(it.url, it.label, 'item-fig', '')).join('')
+          + '</div></div>');
+      }
+      // 与立绘部分之间加分隔线
+      if (costumePortraitList.length > 0 || portraits.length > 0 || misc.length > 0)
+        html += '<hr class="gallery-divider">';
+      html += makeTabGroup(labels, panels);
+    } else {
+      // 只有一组：平铺显示
+      const items = hasInitial ? initialItems : (costumeItems[costumeItemList[0]] || []);
+      if (items.length) {
+        if (costumePortraitList.length > 0 || portraits.length > 0)
+          html += '<hr class="gallery-divider">';
+        html += '<div class="gallery-section"><div class="gallery-label">单品</div><div class="items-row">';
+        for (const it of items) html += fig(it.url, it.label, 'item-fig', '');
+        html += '</div></div>';
+      }
     }
   }
 
