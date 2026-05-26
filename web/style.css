@@ -806,6 +806,11 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
 }
 .item-inline-img:hover { opacity: .82; }
 
+/* 含行内图的 li 建立独立格式化上下文，防止浮动溢出至相邻条目 */
+article li:has(.item-inline-img) {
+  overflow: hidden;
+}
+
 /* 移动端：立绘允许单列换行 */
 @media (max-width: 768px) {
   .portraits-row { flex-wrap: wrap; }
