@@ -131,19 +131,20 @@ html, body {
 .content {
   flex: 1;
   margin-left: var(--sidebar-width);
-  padding: 32px 40px 80px;
+  padding: 28px 28px 80px;
   background-color: #fafafa;
   background-image:
     linear-gradient(#e8e8e8 1px, transparent 1px),
     linear-gradient(90deg, #e8e8e8 1px, transparent 1px);
   background-size: 24px 24px;
+  min-width: 0; /* 防止 flex 子项撑破布局 */
 }
 
 article {
-  max-width: 800px;
+  max-width: 1100px;
   margin: 0 auto;
   background: #fff;
-  padding: 32px 40px;
+  padding: 36px 48px;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
@@ -319,9 +320,9 @@ article {
 
 /* === 报纸首页 === */
 .newspaper {
-  max-width: 900px;
+  max-width: 1100px;
   margin: 0 auto;
-  padding: 24px 32px;
+  padding: 28px 40px;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
@@ -550,24 +551,27 @@ article {
 }
 .newspaper-footer a { color: var(--accent); }
 
-/* ── 移动端适配 ── */
+/* ── 报纸移动端 ── */
+@media (max-width: 1200px) {
+  .newspaper { max-width: 100%; }
+}
 @media (max-width: 768px) {
-  .newspaper { padding: 16px 20px; }
-  article { padding: 24px 20px; }
-  .masthead h1 { font-size: 22px; padding: 6px 12px; }
-  .masthead-sub { font-size: 12px; letter-spacing: 3px; }
+  .newspaper { padding: 16px 14px; }
+  .masthead h1 { font-size: 20px; padding: 6px 12px; letter-spacing: 2px; }
+  .masthead-sub { font-size: 11px; letter-spacing: 3px; }
   .masthead-meta { font-size: 10px; padding: 4px; }
 
   .np-headline { grid-template-columns: 1fr; gap: 14px; }
-  .np-hl-img { width: 130px; height: 173px; }
+  .np-hl-img { width: 120px; height: 160px; }
   .np-grid-top { grid-template-columns: repeat(2, 1fr); }
   .np-grid-bot { grid-template-columns: repeat(2, 1fr); }
-  .np-card-img, .np-grid-bot .np-card-img { height: 120px; }
+  .np-card-img, .np-grid-bot .np-card-img { height: 110px; }
 }
 @media (max-width: 480px) {
   .np-hl-main { flex-direction: column; }
-  .np-hl-img { width: 100%; height: 220px; }
+  .np-hl-img { width: 100%; height: 200px; }
   .np-grid-top, .np-grid-bot { grid-template-columns: 1fr; }
+  .np-card-img, .np-grid-bot .np-card-img { height: 140px; }
 }
 
 /* === 文章排版（报纸风格） === */
@@ -674,7 +678,16 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   font-family: var(--font-body);
 }
 
-/* === 移动端适配 === */
+/* === 响应式断点 === */
+
+/* 中等屏幕（平板横向 / 小笔记本）：缩小侧边栏与内边距 */
+@media (max-width: 1200px) {
+  :root { --sidebar-width: 230px; }
+  .content { padding: 24px 20px 80px; }
+  article { padding: 28px 32px; }
+}
+
+/* 移动端（≤768px）：侧边栏收起、全宽内容 */
 @media (max-width: 768px) {
   :root { --sidebar-width: 260px; }
   .menu-toggle { display: block; }
@@ -689,17 +702,23 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   .sidebar.open { transform: translateX(0); }
   .content {
     margin-left: 0;
-    padding: 24px 20px 50px;
-    max-width: 100%;
+    padding: 16px 12px 60px;
   }
-  .site-title { font-size: 18px; }
+  article {
+    padding: 20px 18px;
+    border-radius: 6px;
+  }
+  .site-title { font-size: 17px; }
   .site-title small { display: none; }
-  .header-search { max-width: 160px; }
-  article h1 { font-size: 26px; }
-  article h2 { font-size: 20px; }
-  article h3 { font-size: 17px; }
+  .header-search { max-width: 150px; }
+  #searchInput { font-size: 13px; padding: 6px 10px; }
+  article h1 { font-size: 24px; }
+  article h2 { font-size: 19px; }
+  article h3 { font-size: 16px; }
+  article h4 { font-size: 14px; }
   article table { font-size: 13px; }
   article th, article td { padding: 6px 8px; }
+  article ul, article ol { padding-left: 20px; }
 }
 
 /* === 角色画廊 === */
