@@ -477,7 +477,8 @@ article {
   margin-bottom: 14px;
 }
 
-/* 故事卡：图片固定尺寸在左，文字自然撑高 */
+/* 故事卡：图片固定尺寸在左，文字自然撑高
+   覆盖全局 article 的 border-radius / overflow */
 .np-story {
   background: var(--bg);
   padding: 12px;
@@ -486,6 +487,9 @@ article {
   align-items: flex-start;
   gap: 10px;
   border-right: 1px solid var(--border-light);
+  border-radius: 0;
+  overflow: visible;
+  box-shadow: none;
 }
 /* 最后一列去右边框；第一行加下边框（3列：前3，2列：前2）*/
 .np-story:last-child { border-right: none; }
@@ -496,14 +500,14 @@ article {
 /* 立绘缩略图：尺寸固定，不影响卡片高度 */
 .np-card-img-wrap {
   flex-shrink: 0;
-  width: 64px;
-  height: 84px;
+  width: 56px;
+  height: 74px;
   overflow: hidden;
   border: 1px solid var(--border-light);
 }
 .np-card-img {
-  width: 64px;
-  height: 84px;
+  width: 56px;
+  height: 74px;
   object-fit: cover;
   object-position: top center;
   display: block;
@@ -539,7 +543,7 @@ article {
   margin: 0 0 6px;
   overflow: hidden;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 5;
   -webkit-box-orient: vertical;
 }
 .np-story .read-more {
@@ -584,10 +588,10 @@ article {
   border-bottom: 2px solid var(--border);
 }
 .newspaper[data-tmpl="1"] .np-grid { grid-template-columns: repeat(2, 1fr); }
-.newspaper[data-tmpl="1"] .np-card-img-wrap { width: 78px; height: 104px; }
-.newspaper[data-tmpl="1"] .np-card-img { width: 78px; height: 104px; }
+.newspaper[data-tmpl="1"] .np-card-img-wrap { width: 70px; height: 92px; }
+.newspaper[data-tmpl="1"] .np-card-img { width: 70px; height: 92px; }
 .newspaper[data-tmpl="1"] .np-story h3 { font-size: 15px; }
-.newspaper[data-tmpl="1"] .np-story p { font-size: 13px; line-height: 1.7; -webkit-line-clamp: 4; }
+.newspaper[data-tmpl="1"] .np-story p { font-size: 13px; line-height: 1.7; -webkit-line-clamp: 6; }
 
 /* 模板2：速报 — 4+4列，密集，粗边框报头 */
 .newspaper[data-tmpl="2"] .masthead h1 {
@@ -603,12 +607,11 @@ article {
   border-bottom: 6px solid var(--border);
 }
 .newspaper[data-tmpl="2"] .np-grid { grid-template-columns: repeat(3, 1fr); }
-.newspaper[data-tmpl="2"] .np-story { padding: 8px; gap: 8px; }
-.newspaper[data-tmpl="2"] .np-card-img-wrap { width: 52px; height: 68px; }
-.newspaper[data-tmpl="2"] .np-card-img { width: 52px; height: 68px; }
-.newspaper[data-tmpl="2"] .np-story h3 { font-size: 12px; }
-.newspaper[data-tmpl="2"] .np-story p { font-size: 11px; line-height: 1.55; -webkit-line-clamp: 2; }
-.newspaper[data-tmpl="2"] .np-grid-bot .np-story p { -webkit-line-clamp: 2; }
+.newspaper[data-tmpl="2"] .np-story { padding: 10px; gap: 8px; }
+.newspaper[data-tmpl="2"] .np-card-img-wrap { width: 50px; height: 66px; }
+.newspaper[data-tmpl="2"] .np-card-img { width: 50px; height: 66px; }
+.newspaper[data-tmpl="2"] .np-story h3 { font-size: 13px; }
+.newspaper[data-tmpl="2"] .np-story p { font-size: 11px; line-height: 1.6; -webkit-line-clamp: 4; }
 .newspaper[data-tmpl="2"] .np-hl-text h2 { font-size: 22px; }
 .newspaper[data-tmpl="2"] .np-grid { border: 2px solid var(--border); }
 .newspaper[data-tmpl="2"] .np-section-rule::before,
