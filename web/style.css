@@ -141,13 +141,11 @@ html, body {
   position: relative; /* 供水印绝对定位 */
 }
 
-/* 角色词条：深色背景 */
-.content:has(.char-watermark) {
-  background-color: #1a1a1a;
-  background-image: none;
-}
+/* 角色词条：article 靠左 + 半透明（让水印从后方透出） */
 .content:has(.char-watermark) article {
-  background: rgba(255, 255, 255, 0.93);
+  margin-left: 0;
+  margin-right: auto;
+  background: rgba(255, 255, 255, 0.84);
 }
 
 article {
@@ -750,12 +748,39 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   width: 100%;
   height: auto;
   display: block;
-  opacity: 0.35;
-  mix-blend-mode: screen; /* 暗部融入深色背景，亮部发光 */
+  opacity: 0.42;
+  mix-blend-mode: multiply; /* 透明/白色区消失，彩色部分叠于浅色底 */
 }
 @media (max-width: 768px) {
   .char-watermark { display: none; }
 }
+
+/* === 画廊页卡 === */
+.gallery-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  border-bottom: 2px solid var(--border-light);
+  margin-bottom: 12px;
+  gap: 0;
+}
+.gallery-tab {
+  padding: 5px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  font-family: var(--font-body);
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px; /* 压住父级底边线 */
+  transition: color 0.15s, border-color 0.15s;
+}
+.gallery-tab:hover { color: var(--text); }
+.gallery-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.gallery-panel { display: none; }
+.gallery-panel.active { display: block; }
 
 /* === 角色画廊 === */
 .char-gallery {

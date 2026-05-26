@@ -139,39 +139,65 @@ function buildCharGallery(file, root) {
   const fig = (url, label, figCls, imgCls) =>
     `<figure class="${figCls}">${imgTag(url, label, imgCls)}<figcaption>${escapeHtml(label)}</figcaption></figure>`;
 
+  // 有视觉立绘（场景图或L2D）的时装列表
+  const allCostumes = [...new Set([...Object.keys(costumeArts), ...Object.keys(costumeItems)])].sort();
+  const costumeTabList = allCostumes.filter(n => costumeArts[n]?.scene || costumeArts[n]?.L2D);
+  const useTabs = costumeTabList.length > 0;
+
   let html = '<div class="char-gallery">';
 
-  // 主立绘
-  if (portraits.length) {
-    html += '<div class="gallery-section">';
-    html += '<div class="gallery-label">立绘</div>';
-    html += '<div class="portraits-row">';
-    for (const p of portraits) html += fig(p.url, p.label, 'portrait-fig', '');
-    html += '</div></div>';
-  }
-
-  // 时装（按时装名排序；单品图不在画廊显示，仅行内注入）
-  const allCostumes = [...new Set([...Object.keys(costumeArts), ...Object.keys(costumeItems)])].sort();
-  for (const name of allCostumes) {
-    const arts  = costumeArts[name]  || {};
-    if (!arts.scene && !arts.L2D) continue; // 只有单品、无场景图则跳过
-    html += `<div class="gallery-section costume-section">`;
-    html += `<div class="gallery-label">时装 · ${escapeHtml(name)}</div>`;
-    html += '<div class="costume-layout">';
-    html += '<div class="costume-arts">';
-    if (arts.scene) html += fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '');
-    if (arts.L2D)   html += fig(arts.L2D.url,   '立绘',   'portrait-fig', '');
+  if (useTabs) {
+    // ── 页卡模式：立绘 / 时装A / 时装B … ────────────────────────────
+    html += '<div class="gallery-tabs" role="tablist">';
+    html += '<button class="gallery-tab active" role="tab">立绘</button>';
+    for (const name of costumeTabList)
+      html += `<button class="gallery-tab" role="tab">${escapeHtml(name)}</button>`;
     html += '</div>';
-    html += '</div></div>';
-  }
 
-  // 附图（剧情截图等）
-  if (misc.length) {
-    html += '<div class="gallery-section">';
-    html += '<div class="gallery-label">附图</div>';
-    html += '<div class="portraits-row">';
-    for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
-    html += '</div></div>';
+    // Panel 0：主立绘 + 附图
+    html += '<div class="gallery-panel active">';
+    if (portraits.length) {
+      html += '<div class="gallery-section"><div class="portraits-row">';
+      for (const p of portraits) html += fig(p.url, p.label, 'portrait-fig', '');
+      html += '</div></div>';
+    }
+    if (misc.length) {
+      html += '<div class="gallery-section">';
+      html += '<div class="gallery-label">附图</div>';
+      html += '<div class="portraits-row">';
+      for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
+      html += '</div></div>';
+    }
+    html += '</div>';
+
+    // Panel N：各时装
+    for (const name of costumeTabList) {
+      const arts = costumeArts[name] || {};
+      html += '<div class="gallery-panel">';
+      html += '<div class="gallery-section costume-section">';
+      html += '<div class="costume-layout"><div class="costume-arts">';
+      if (arts.scene) html += fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '');
+      if (arts.L2D)   html += fig(arts.L2D.url,   '立绘',   'portrait-fig', '');
+      html += '</div></div></div>';
+      html += '</div>';
+    }
+
+  } else {
+    // ── 平铺模式（无时装） ────────────────────────────────────────
+    if (portraits.length) {
+      html += '<div class="gallery-section">';
+      html += '<div class="gallery-label">立绘</div>';
+      html += '<div class="portraits-row">';
+      for (const p of portraits) html += fig(p.url, p.label, 'portrait-fig', '');
+      html += '</div></div>';
+    }
+    if (misc.length) {
+      html += '<div class="gallery-section">';
+      html += '<div class="gallery-label">附图</div>';
+      html += '<div class="portraits-row">';
+      for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
+      html += '</div></div>';
+    }
   }
 
   html += '</div>'; // .char-gallery
