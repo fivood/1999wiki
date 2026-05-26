@@ -3,6 +3,10 @@ const path = require('path');
 const matter = require('gray-matter');
 const { marked } = require('marked');
 
+// sharp 可选：用于生成压缩水印 WebP；未安装时退化为直接复制原图
+let sharp = null;
+try { sharp = require('sharp'); } catch (e) { console.warn('⚠ sharp 未安装，水印将直接复制原图（可运行 npm install sharp --save-dev 安装）'); }
+
 const WIKI_DIR = path.join(__dirname, '..', 'wiki');
 const RAW_DIR  = path.join(__dirname, '..', 'raw');
 const DIST_DIR = path.join(__dirname, 'dist');
@@ -175,10 +179,10 @@ function buildCharGallery(file, root) {
 }
 
 /**
- * 若存在洞悉立绘，返回背景水印 div（注入到 article 内容最前面）。
- * 使用 position:absolute / z-index:-1，始终在文字下方显示。
+ * 若存在洞悉立绘，生成压缩 WebP 水印（用 sharp），并返回水印 div HTML。
+ * 水印 div 作为 {{watermark}} 注入 .content 层（article 的兄弟元素）。
  */
-function buildCharWatermark(file, root) {
+async function buildCharWatermark(file, root) {
   const type = file.meta?.type;
   if (type !== 'character' && type !== 'npc') return '';
   const parts = file.slug.split('/');
@@ -188,14 +192,33 @@ function buildCharWatermark(file, root) {
   if (!fs.existsSync(srcDir)) return '';
 
   for (const ext of ['.png', '.jpg', '.jpeg', '.webp']) {
-    const f = `${charName}_洞悉${ext}`;
-    const src = path.join(srcDir, f);
-    if (fs.existsSync(src)) {
-      const destDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
-      copyImgIfMissing(src, path.join(destDir, f));
-      const url = `${root}assets/${encodeUrlPath('立绘', org, charName)}/${encodeURIComponent(f)}`;
-      return `<div class="char-watermark" aria-hidden="true"><img src="${url}" alt="" loading="lazy"></div>`;
+    const srcFilename = `${charName}_洞悉${ext}`;
+    const src = path.join(srcDir, srcFilename);
+    if (!fs.existsSync(src)) continue;
+
+    const destDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
+    ensureDir(destDir);
+
+    // 生成压缩水印 WebP（1000px 宽，quality 75）；已存在则跳过
+    const wmFilename = `${charName}_洞悉_wm.webp`;
+    const wmDest = path.join(destDir, wmFilename);
+    if (!fs.existsSync(wmDest)) {
+      if (sharp) {
+        await sharp(src)
+          .resize({ width: 1000, withoutEnlargement: true })
+          .webp({ quality: 75 })
+          .toFile(wmDest);
+      } else {
+        // fallback：直接复制原图
+        fs.copyFileSync(src, wmDest);
+      }
     }
+
+    // 同时确保原图也复制到 dist（画廊等仍需要）
+    copyImgIfMissing(src, path.join(destDir, srcFilename));
+
+    const url = `${root}assets/${encodeUrlPath('立绘', org, charName)}/${encodeURIComponent(wmFilename)}`;
+    return `<div class="char-watermark" aria-hidden="true"><img src="${url}" alt="" loading="lazy"></div>`;
   }
   return '';
 }
@@ -591,77 +614,84 @@ function generateNewspaperHome(files) {
   return html;
 }
 
-/* ── 处理单个文件 ── */
-const searchDocs = [];
+/* ── 构建主流程（async，因 buildCharWatermark 用了 sharp） ── */
+async function buildAll() {
+  const searchDocs = [];
 
-for (const file of files) {
-  const raw = fs.readFileSync(file.full, 'utf-8');
-  const parsed = matter(raw);
-  file.meta = parsed.data;
+  for (const file of files) {
+    const raw = fs.readFileSync(file.full, 'utf-8');
+    const parsed = matter(raw);
+    file.meta = parsed.data;
 
-  // Wiki Link → HTML 链接
-  let mdBody = processWikiLinks(parsed.content, file.slug);
+    // Wiki Link → HTML 链接
+    let mdBody = processWikiLinks(parsed.content, file.slug);
 
-  // 组装页面
-  const root = relativeRoot(file.url);
+    // 组装页面
+    const root = relativeRoot(file.url);
 
-  let contentHtml = marked.parse(mdBody);
+    let contentHtml = marked.parse(mdBody);
 
-  // 给 heading 添加 anchor id（基于纯文本内容）
-  contentHtml = contentHtml.replace(/<h([1-6])>(.+?)<\/h\1>/g, (match, level, inner) => {
-    const plain = inner.replace(/<[^>]+>/g, '');
-    const id = plain.toLowerCase().replace(/[^\w一-龥]+/g, '-').replace(/^-|-$/g, '');
-    const safeId = id || 'heading-' + Math.random().toString(36).slice(2, 7);
-    return `<h${level} id="${safeId}">${inner}</h${level}>`;
-  });
+    // 给 heading 添加 anchor id（基于纯文本内容）
+    contentHtml = contentHtml.replace(/<h([1-6])>(.+?)<\/h\1>/g, (match, level, inner) => {
+      const plain = inner.replace(/<[^>]+>/g, '');
+      const id = plain.toLowerCase().replace(/[^\w一-龥]+/g, '-').replace(/^-|-$/g, '');
+      const safeId = id || 'heading-' + Math.random().toString(36).slice(2, 7);
+      return `<h${level} id="${safeId}">${inner}</h${level}>`;
+    });
 
-  // 行内单品 / 尤提姆图片注入
-  const inlineMap = buildInlineImgMap(file, root);
-  contentHtml = injectInlineImages(contentHtml, inlineMap);
+    // 行内单品 / 尤提姆图片注入
+    const inlineMap = buildInlineImgMap(file, root);
+    contentHtml = injectInlineImages(contentHtml, inlineMap);
 
-  const title = parsed.data.title || (file.slug === 'index' ? '首页' : file.name);
-  const navHtml = buildNav(file.url);
-  const breadcrumbs = buildBreadcrumbs(file.slug, root);
-  const metaBar = buildMetaBar(parsed.data);
-  const gallery   = buildCharGallery(file, root);
-  const watermark = buildCharWatermark(file, root);
+    const title = parsed.data.title || (file.slug === 'index' ? '首页' : file.name);
+    const navHtml = buildNav(file.url);
+    const breadcrumbs = buildBreadcrumbs(file.slug, root);
+    const metaBar = buildMetaBar(parsed.data);
+    const gallery   = buildCharGallery(file, root);
+    // watermark 现在是 {{watermark}} 独立槽位（.content 层兄弟元素）
+    const watermark = await buildCharWatermark(file, root);
 
-  let page = template
-    .replace(/\{\{title\}\}/g, escapeHtml(title))
-    .replace(/\{\{root\}\}/g, root)
-    .replace(/\{\{nav\}\}/g, navHtml)
-    .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
-    .replace(/\{\{content\}\}/g, watermark + metaBar + gallery + contentHtml);
+    let page = template
+      .replace(/\{\{title\}\}/g, escapeHtml(title))
+      .replace(/\{\{root\}\}/g, root)
+      .replace(/\{\{nav\}\}/g, navHtml)
+      .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
+      .replace(/\{\{watermark\}\}/g, watermark)
+      .replace(/\{\{content\}\}/g, metaBar + gallery + contentHtml);
 
-  // 写入
-  const outPath = path.join(DIST_DIR, file.url);
-  ensureDir(path.dirname(outPath));
-  fs.writeFileSync(outPath, page, 'utf-8');
+    // 写入
+    const outPath = path.join(DIST_DIR, file.url);
+    ensureDir(path.dirname(outPath));
+    fs.writeFileSync(outPath, page, 'utf-8');
 
-  // 收集搜索数据
-  const plainText = contentHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  searchDocs.push({
-    title,
-    url: file.url,
-    text: plainText.slice(0, 3000), // 限制长度
-  });
+    // 收集搜索数据
+    const plainText = contentHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+    searchDocs.push({
+      title,
+      url: file.url,
+      text: plainText.slice(0, 3000), // 限制长度
+    });
+  }
+
+  /* ── 生成报纸首页（独立页面） ── */
+  const newspaperHtml = generateNewspaperHome(files);
+  const newspaperPage = template
+    .replace(/\{\{title\}\}/g, '今日报纸')
+    .replace(/\{\{root\}\}/g, '')
+    .replace(/\{\{nav\}\}/g, buildNav('newspaper.html'))
+    .replace(/\{\{breadcrumbs\}\}/g, '')
+    .replace(/\{\{watermark\}\}/g, '')
+    .replace(/\{\{content\}\}/g, newspaperHtml);
+  fs.writeFileSync(path.join(DIST_DIR, 'newspaper.html'), newspaperPage, 'utf-8');
+  // 同时写入根目录默认页，让 https://1999.fivood.com/ 直接显示报纸
+  fs.writeFileSync(path.join(DIST_DIR, 'index.html'), newspaperPage, 'utf-8');
+
+  /* ── 写入搜索索引 & 复制静态资源 ── */
+  fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
+  fs.copyFileSync(CSS_PATH, path.join(DIST_DIR, 'style.css'));
+
+  console.log(`✅ 构建完成：${files.length} 个页面 → ${DIST_DIR}`);
+  console.log(`   搜索索引：${searchDocs.length} 条`);
 }
 
-/* ── 生成报纸首页（独立页面） ── */
-const newspaperHtml = generateNewspaperHome(files);
-const newspaperPage = template
-  .replace(/\{\{title\}\}/g, '今日报纸')
-  .replace(/\{\{root\}\}/g, '')
-  .replace(/\{\{nav\}\}/g, buildNav('newspaper.html'))
-  .replace(/\{\{breadcrumbs\}\}/g, '')
-  .replace(/\{\{content\}\}/g, newspaperHtml);
-fs.writeFileSync(path.join(DIST_DIR, 'newspaper.html'), newspaperPage, 'utf-8');
-// 同时写入根目录默认页，让 https://1999.fivood.com/ 直接显示报纸
-fs.writeFileSync(path.join(DIST_DIR, 'index.html'), newspaperPage, 'utf-8');
-
-/* ── 写入搜索索引 & 复制静态资源 ── */
-fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
-fs.copyFileSync(CSS_PATH, path.join(DIST_DIR, 'style.css'));
-
-console.log(`✅ 构建完成：${files.length} 个页面 → ${DIST_DIR}`);
-console.log(`   搜索索引：${searchDocs.length} 条`);
+buildAll().catch(err => { console.error('❌ 构建出错：', err); process.exit(1); });

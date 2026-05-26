@@ -138,6 +138,16 @@ html, body {
     linear-gradient(90deg, #e8e8e8 1px, transparent 1px);
   background-size: 24px 24px;
   min-width: 0; /* 防止 flex 子项撑破布局 */
+  position: relative; /* 供水印绝对定位 */
+}
+
+/* 角色词条：深色背景 */
+.content:has(.char-watermark) {
+  background-color: #1a1a1a;
+  background-image: none;
+}
+.content:has(.char-watermark) article {
+  background: rgba(255, 255, 255, 0.93);
 }
 
 article {
@@ -148,6 +158,7 @@ article {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   position: relative;
+  z-index: 1; /* 浮于水印之上 */
   isolation: isolate;
   overflow: hidden;
 }
@@ -724,22 +735,26 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   article ul, article ol { padding-left: 20px; }
 }
 
-/* === 洞悉水印 === */
+/* === 洞悉水印（.content 层绝对定位，article 半透明后透出） === */
 .char-watermark {
   position: absolute;
-  right: -6%;
-  top: 100px;   /* 避开标题和画廊区域 */
-  width: 72%;
+  right: 0;
+  top: 0;
+  /* 宽度用 clamp：普通屏 ~700px，2K 约 1100px，4K 约 1400px */
+  width: clamp(700px, 58%, 1500px);
   pointer-events: none;
   user-select: none;
-  z-index: -1;
+  z-index: 0; /* 低于 article(z-index:1)，高于 .content 背景 */
 }
 .char-watermark img {
   width: 100%;
   height: auto;
   display: block;
-  opacity: 0.12;
-  mix-blend-mode: multiply;
+  opacity: 0.35;
+  mix-blend-mode: screen; /* 暗部融入深色背景，亮部发光 */
+}
+@media (max-width: 768px) {
+  .char-watermark { display: none; }
 }
 
 /* === 角色画廊 === */
