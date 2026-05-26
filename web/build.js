@@ -688,8 +688,8 @@ function generateNewspaperHome(files) {
   const pool = [...withImg, ...noImg];
   if (pool.length < 3) return '';
 
-  const selected = pool.slice(0, 8);
-  const [headline, ...stories] = selected;
+  const selected = pool.slice(0, 7);
+  const [headline, ...stories] = selected;   // stories: 6篇
 
   const dateStr  = '<span id="newspaperDate"></span>';
   const issueNum = Math.floor(Math.random() * 900) + 100;
@@ -738,33 +738,16 @@ function generateNewspaperHome(files) {
   </div>
 </div>`;
 
-  // ── 今日要闻分割线 ────────────────────────────────────────────────
+  // ── 今日要闻（6篇，3列×2行）────────────────────────────────────
   html += `<div class="np-section-rule"><span>今日要闻</span></div>`;
-
-  // ── 上排：前3篇（1篇跨2列 + 1篇） ────────────────────────────────
-  const topStories = stories.slice(0, 3);
-  html += `<div class="np-grid np-grid-top">`;
-  for (const s of topStories) html += card(s, 180);
+  html += `<div class="np-grid">`;
+  for (const s of stories) html += card(s, 150);
   html += `</div>`;
 
-  // ── 下排：剩余篇（4列，更紧凑） ──────────────────────────────────
-  const botStories = stories.slice(3);
-  if (botStories.length) {
-    html += `<div class="np-grid np-grid-bot">`;
-    for (const s of botStories) html += card(s, 110);
-    html += `</div>`;
-  }
-
-  // ── 底栏（今日简讯嵌入右侧）──────────────────────────────────────
+  // ── 底栏（简讯一行）─────────────────────────────────────────────
   html += `<footer class="newspaper-footer">
-  <div class="newspaper-footer-text">本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>
-  <aside class="np-brief-box">
-    <div class="np-brief-title">今日简讯</div>
-    <p class="np-brief-text">本站共收录 <strong>${files.length}</strong> 篇词条，涵盖角色、剧情、世界观等内容。</p>
-    <p class="np-brief-text">所有资料均来自游戏原作，仅供创作参考。</p>
-    <hr>
-    <p class="np-brief-text">点击任意图片可放大查看。</p>
-  </aside>
+  <span class="np-brief-inline">今日简讯：本站共收录 <strong>${files.length}</strong> 篇词条，涵盖角色、剧情、世界观等内容，资料均来自游戏原作，仅供创作参考。</span>
+  <span class="np-footer-reload"><a href="index.html" onclick="location.reload();return false;">刷新换一批</a></span>
 </footer>`;
 
   // ── 每日模板选择脚本（基于日期，0/1/2 循环）────────────────────
