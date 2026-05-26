@@ -437,97 +437,129 @@ function extractSummary(file, maxLen = 220) {
   return text.slice(0, maxLen) + (text.length > maxLen ? '…' : '');
 }
 
+/**
+ * 获取词条代表图 URL（相对于 dist 根目录，用于报纸首页）。
+ * 优先级：{角色名}_初始 → 洞悉 → 基础
+ * 非角色词条返回 null。
+ */
+function getRepresentativeImage(file) {
+  const type = file.meta?.type;
+  if (type !== 'character' && type !== 'npc') return null;
+  const parts = file.slug.split('/');
+  if (parts[0] !== '角色' || parts.length < 3) return null;
+  const org = parts[1], charName = parts[2];
+  const srcDir = path.join(RAW_DIR, '立绘', org, charName);
+  if (!fs.existsSync(srcDir)) return null;
+  for (const stem of ['初始', '洞悉', '基础']) {
+    for (const ext of ['.png', '.jpg', '.jpeg', '.webp']) {
+      const f = `${charName}_${stem}${ext}`;
+      const src = path.join(srcDir, f);
+      if (fs.existsSync(src)) {
+        const destDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
+        copyImgIfMissing(src, path.join(destDir, f));
+        return `assets/${encodeUrlPath('立绘', org, charName)}/${encodeURIComponent(f)}`;
+      }
+    }
+  }
+  return null;
+}
+
 /* ── 生成报纸首页 ── */
 function generateNewspaperHome(files) {
   const candidates = files.filter(f => f.slug !== 'index' && f.meta?.title);
-  const shuffled = candidates.sort(() => 0.5 - Math.random());
-  const selected = shuffled.slice(0, 7);
-  if (selected.length < 3) return '';
 
-  const headline = selected[0];
-  const stories = selected.slice(1);
-  const dateStr = '<span id="newspaperDate"></span>';
+  // 为所有候选词条预计算代表图
+  const imgMap = new Map();
+  for (const f of candidates) {
+    const img = getRepresentativeImage(f);
+    if (img) imgMap.set(f.slug, img);
+  }
+
+  // 打乱后：有图的优先进入头条位置
+  const shuffled = [...candidates].sort(() => 0.5 - Math.random());
+  const withImg  = shuffled.filter(f =>  imgMap.has(f.slug));
+  const noImg    = shuffled.filter(f => !imgMap.has(f.slug));
+  const pool = [...withImg, ...noImg];
+  if (pool.length < 3) return '';
+
+  const selected = pool.slice(0, 7);
+  const [headline, ...stories] = selected;
+
+  const dateStr  = '<span id="newspaperDate"></span>';
   const issueNum = Math.floor(Math.random() * 900) + 100;
+
+  // ── 辅助：渲染一张故事卡 ──────────────────────────────────────────
+  const card = (f, summaryLen = 150) => {
+    const img = imgMap.get(f.slug);
+    const imgBlock = img
+      ? `<div class="np-card-img-wrap"><img class="np-card-img lb-trigger" src="${img}" data-src="${img}" alt="${escapeHtml(f.meta.title)}" loading="lazy"></div>`
+      : '';
+    return `<article class="np-story${img ? ' has-img' : ''}">
+  ${imgBlock}<h3><a href="${f.url}">${escapeHtml(f.meta.title)}</a></h3>
+  <p>${escapeHtml(extractSummary(f, summaryLen))}</p>
+  <a href="${f.url}" class="read-more">阅读全文 →</a>
+</article>`;
+  };
 
   let html = `<div class="newspaper">`;
 
-  // 报头
-  html += `<header class="masthead">`;
-  html += `<h1>THE REVERSE: 1999 CHRONICLE</h1>`;
-  html += `<div class="masthead-sub">重返未来：1999 剧情 Wiki</div>`;
-  html += `<div class="masthead-meta">`;
-  html += `<span>第 ${issueNum} 期</span>`;
-  html += `<span>${dateStr}</span>`;
-  html += `<span>售价 1 利齿子儿</span>`;
-  html += `</div></header>`;
+  // ── 报头 ─────────────────────────────────────────────────────────
+  html += `<header class="masthead">
+  <h1>THE REVERSE: 1999 CHRONICLE</h1>
+  <div class="masthead-sub">重返未来：1999 剧情 Wiki</div>
+  <div class="masthead-meta">
+    <span>第 ${issueNum} 期</span>
+    <span>${dateStr}</span>
+    <span>售价 1 利齿子儿</span>
+  </div>
+</header>`;
 
-  // 头条
-  html += `<div class="headline-story">`;
-  html += `<div class="headline-main">`;
-  html += `<h2><a href="${headline.url}">${escapeHtml(headline.meta.title)}</a></h2>`;
-  html += `<p class="headline-summary">${escapeHtml(extractSummary(headline, 320))}</p>`;
-  html += `<a href="${headline.url}" class="read-more">阅读全文 →</a>`;
-  html += `</div>`;
-  html += `<div class="headline-side">`;
-  html += `<div class="box-ad">`;
-  html += `<div class="box-ad-title">今日简讯</div>`;
-  html += `<div class="box-ad-text">本站共收录 ${files.length} 篇词条，涵盖角色、剧情、世界观等内容。所有资料均来自游戏原作，仅供创作参考。</div>`;
-  html += `</div>`;
-  html += `</div>`;
-  html += `</div>`;
+  // ── 头条 ─────────────────────────────────────────────────────────
+  const hlImg = imgMap.get(headline.slug);
+  const hlImgBlock = hlImg
+    ? `<div class="np-hl-img-wrap"><img class="np-hl-img lb-trigger" src="${hlImg}" data-src="${hlImg}" alt="${escapeHtml(headline.meta.title)}" loading="lazy"></div>`
+    : '';
 
-  // 新闻网格（不规则布局）
-  const [s1, s2, s3, s4, s5, s6] = stories;
-  html += `<div class="news-grid">`;
+  html += `<div class="np-headline${hlImg ? ' has-img' : ''}">
+  <div class="np-hl-main">
+    ${hlImgBlock}
+    <div class="np-hl-text">
+      <div class="np-kicker">头条</div>
+      <h2><a href="${headline.url}">${escapeHtml(headline.meta.title)}</a></h2>
+      <p>${escapeHtml(extractSummary(headline, 340))}</p>
+      <a href="${headline.url}" class="read-more">阅读全文 →</a>
+    </div>
+  </div>
+  <aside class="np-brief-box">
+    <div class="np-brief-title">今日简讯</div>
+    <p class="np-brief-text">本站共收录 <strong>${files.length}</strong> 篇词条，涵盖角色、剧情、世界观等内容。</p>
+    <p class="np-brief-text">所有资料均来自游戏原作，仅供创作参考。</p>
+    <hr>
+    <p class="np-brief-text">点击任意图片可放大查看。</p>
+  </aside>
+</div>`;
 
-  // 全宽头条
-  html += `<article class="news-item news-headline">`;
-  html += `<h3><a href="${s1.url}">${escapeHtml(s1.meta.title)}</a></h3>`;
-  html += `<p>${escapeHtml(extractSummary(s1, 260))}</p>`;
-  html += `<a href="${s1.url}" class="read-more">阅读全文 →</a>`;
-  html += `</article>`;
+  // ── 今日要闻分割线 ────────────────────────────────────────────────
+  html += `<div class="np-section-rule"><span>今日要闻</span></div>`;
 
-  // 左中
-  html += `<article class="news-item news-left-mid">`;
-  html += `<h3><a href="${s2.url}">${escapeHtml(s2.meta.title)}</a></h3>`;
-  html += `<p>${escapeHtml(extractSummary(s2, 200))}</p>`;
-  html += `<a href="${s2.url}" class="read-more">阅读全文 →</a>`;
-  html += `</article>`;
-
-  // 右中
-  html += `<article class="news-item news-right-mid">`;
-  html += `<h3><a href="${s3.url}">${escapeHtml(s3.meta.title)}</a></h3>`;
-  html += `<p>${escapeHtml(extractSummary(s3, 160))}</p>`;
-  html += `<a href="${s3.url}" class="read-more">阅读全文 →</a>`;
-  html += `</article>`;
-
-  // 左下（竖长条）
-  html += `<article class="news-item news-left-low">`;
-  html += `<h3><a href="${s4.url}">${escapeHtml(s4.meta.title)}</a></h3>`;
-  html += `<p>${escapeHtml(extractSummary(s4, 240))}</p>`;
-  html += `<a href="${s4.url}" class="read-more">阅读全文 →</a>`;
-  html += `</article>`;
-
-  // 右下上
-  html += `<article class="news-item news-right-up">`;
-  html += `<h3><a href="${s5.url}">${escapeHtml(s5.meta.title)}</a></h3>`;
-  html += `<p>${escapeHtml(extractSummary(s5, 180))}</p>`;
-  html += `<a href="${s5.url}" class="read-more">阅读全文 →</a>`;
-  html += `</article>`;
-
-  // 右下下
-  html += `<article class="news-item news-right-down">`;
-  html += `<h3><a href="${s6.url}">${escapeHtml(s6.meta.title)}</a></h3>`;
-  html += `<p>${escapeHtml(extractSummary(s6, 140))}</p>`;
-  html += `<a href="${s6.url}" class="read-more">阅读全文 →</a>`;
-  html += `</article>`;
-
+  // ── 上排：前3篇（1篇跨2列 + 1篇） ────────────────────────────────
+  const topStories = stories.slice(0, 3);
+  html += `<div class="np-grid np-grid-top">`;
+  for (const s of topStories) html += card(s, 180);
   html += `</div>`;
 
-  // 底栏
-  html += `<footer class="newspaper-footer">`;
-  html += `<div>本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>`;
-  html += `</footer>`;
+  // ── 下排：剩余篇（4列，更紧凑） ──────────────────────────────────
+  const botStories = stories.slice(3);
+  if (botStories.length) {
+    html += `<div class="np-grid np-grid-bot">`;
+    for (const s of botStories) html += card(s, 110);
+    html += `</div>`;
+  }
+
+  // ── 底栏 ─────────────────────────────────────────────────────────
+  html += `<footer class="newspaper-footer">
+  <div>本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>
+</footer>`;
 
   html += `</div>`;
   return html;
