@@ -175,6 +175,32 @@ function buildCharGallery(file, root) {
 }
 
 /**
+ * 若存在洞悉立绘，返回背景水印 div（注入到 article 内容最前面）。
+ * 使用 position:absolute / z-index:-1，始终在文字下方显示。
+ */
+function buildCharWatermark(file, root) {
+  const type = file.meta?.type;
+  if (type !== 'character' && type !== 'npc') return '';
+  const parts = file.slug.split('/');
+  if (parts[0] !== '角色' || parts.length < 3) return '';
+  const org = parts[1], charName = parts[2];
+  const srcDir = path.join(RAW_DIR, '立绘', org, charName);
+  if (!fs.existsSync(srcDir)) return '';
+
+  for (const ext of ['.png', '.jpg', '.jpeg', '.webp']) {
+    const f = `${charName}_洞悉${ext}`;
+    const src = path.join(srcDir, f);
+    if (fs.existsSync(src)) {
+      const destDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
+      copyImgIfMissing(src, path.join(destDir, f));
+      const url = `${root}assets/${encodeUrlPath('立绘', org, charName)}/${encodeURIComponent(f)}`;
+      return `<div class="char-watermark" aria-hidden="true"><img src="${url}" alt="" loading="lazy"></div>`;
+    }
+  }
+  return '';
+}
+
+/**
  * 构建"标签 → 图片URL"映射，用于行内注入：
  *   {charName}_尤提姆.png   → '尤提姆'
  *   初始_{单品名}.png       → '{单品名}'
@@ -597,14 +623,15 @@ for (const file of files) {
   const navHtml = buildNav(file.url);
   const breadcrumbs = buildBreadcrumbs(file.slug, root);
   const metaBar = buildMetaBar(parsed.data);
-  const gallery = buildCharGallery(file, root);
+  const gallery   = buildCharGallery(file, root);
+  const watermark = buildCharWatermark(file, root);
 
   let page = template
     .replace(/\{\{title\}\}/g, escapeHtml(title))
     .replace(/\{\{root\}\}/g, root)
     .replace(/\{\{nav\}\}/g, navHtml)
     .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
-    .replace(/\{\{content\}\}/g, metaBar + gallery + contentHtml);
+    .replace(/\{\{content\}\}/g, watermark + metaBar + gallery + contentHtml);
 
   // 写入
   const outPath = path.join(DIST_DIR, file.url);
