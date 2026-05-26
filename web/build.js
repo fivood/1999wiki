@@ -701,10 +701,10 @@ function generateNewspaperHome(files) {
       ? `<div class="np-card-img-wrap"><img class="np-card-img lb-trigger" src="${img}" data-src="${img}" alt="${escapeHtml(f.meta.title)}" loading="lazy"></div>`
       : '';
     return `<article class="np-story${img ? ' has-img' : ''}">
-  ${imgBlock}<h3><a href="${f.url}">${escapeHtml(f.meta.title)}</a></h3>
+  ${imgBlock}<div class="np-story-body"><h3><a href="${f.url}">${escapeHtml(f.meta.title)}</a></h3>
   <p>${escapeHtml(extractSummary(f, summaryLen))}</p>
   <a href="${f.url}" class="read-more">阅读全文 →</a>
-</article>`;
+  </div></article>`;
   };
 
   let html = `<div class="newspaper">`;
@@ -755,8 +755,9 @@ function generateNewspaperHome(files) {
     html += `</div>`;
   }
 
-  // ── 今日简讯（右下角）──────────────────────────────────────────
-  html += `<div class="np-bottom-bar">
+  // ── 底栏（今日简讯嵌入右侧）──────────────────────────────────────
+  html += `<footer class="newspaper-footer">
+  <div class="newspaper-footer-text">本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>
   <aside class="np-brief-box">
     <div class="np-brief-title">今日简讯</div>
     <p class="np-brief-text">本站共收录 <strong>${files.length}</strong> 篇词条，涵盖角色、剧情、世界观等内容。</p>
@@ -764,11 +765,6 @@ function generateNewspaperHome(files) {
     <hr>
     <p class="np-brief-text">点击任意图片可放大查看。</p>
   </aside>
-</div>`;
-
-  // ── 底栏 ─────────────────────────────────────────────────────────
-  html += `<footer class="newspaper-footer">
-  <div>本页内容每次访问随机生成 · <a href="index.html" onclick="location.reload();return false;">刷新换一批</a></div>
 </footer>`;
 
   // ── 每日模板选择脚本（基于日期，0/1/2 循环）────────────────────
