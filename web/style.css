@@ -487,13 +487,11 @@ article {
   gap: 10px;
   border-right: 1px solid var(--border-light);
 }
-/* 同行最后一列去掉右边框；第一行各列加下边框 */
+/* 最后一列去右边框；第一行加下边框（3列：前3，2列：前2）*/
 .np-story:last-child { border-right: none; }
 .np-story:nth-child(-n+3) { border-bottom: 1px solid var(--border-light); }
 .newspaper[data-tmpl="1"] .np-story:nth-child(-n+3) { border-bottom: none; }
 .newspaper[data-tmpl="1"] .np-story:nth-child(-n+2) { border-bottom: 1px solid var(--border-light); }
-.newspaper[data-tmpl="2"] .np-story:nth-child(-n+3) { border-bottom: none; }
-.newspaper[data-tmpl="2"] .np-story:nth-child(-n+4) { border-bottom: 1px solid var(--border-light); }
 
 /* 立绘缩略图：尺寸固定，不影响卡片高度 */
 .np-card-img-wrap {
@@ -604,7 +602,7 @@ article {
 .newspaper[data-tmpl="2"] .masthead {
   border-bottom: 6px solid var(--border);
 }
-.newspaper[data-tmpl="2"] .np-grid { grid-template-columns: repeat(4, 1fr); }
+.newspaper[data-tmpl="2"] .np-grid { grid-template-columns: repeat(3, 1fr); }
 .newspaper[data-tmpl="2"] .np-story { padding: 8px; gap: 8px; }
 .newspaper[data-tmpl="2"] .np-card-img-wrap { width: 52px; height: 68px; }
 .newspaper[data-tmpl="2"] .np-card-img { width: 52px; height: 68px; }
