@@ -727,9 +727,9 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
 /* === 洞悉水印 === */
 .char-watermark {
   position: absolute;
-  right: -4%;
-  bottom: -4%;
-  width: 52%;
+  right: -6%;
+  top: 100px;   /* 避开标题和画廊区域 */
+  width: 72%;
   pointer-events: none;
   user-select: none;
   z-index: -1;
@@ -739,7 +739,7 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   height: auto;
   display: block;
   opacity: 0.12;
-  mix-blend-mode: multiply; /* 透明 PNG：白底=不可见，角色色彩正常叠加 */
+  mix-blend-mode: multiply;
 }
 
 /* === 角色画廊 === */
