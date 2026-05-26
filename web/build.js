@@ -105,7 +105,9 @@ function buildCharGallery(file, root) {
     const url   = urlBase + encodeURIComponent(f);
 
     if (stem === charName || stem.startsWith(charName + '_')) {
-      portraits.push({ url, label: stem.replace(charName + '_', '') || charName });
+      const label = stem.replace(charName + '_', '') || charName;
+      // 尤提姆作为行内注入，不进入立绘行
+      if (label !== '尤提姆') portraits.push({ url, label });
 
     } else if (stem.startsWith('衣着_')) {
       const rest = stem.slice(3);
@@ -144,35 +146,18 @@ function buildCharGallery(file, root) {
     html += '</div></div>';
   }
 
-  // 初始单品
-  if (initialItems.length) {
-    html += '<div class="gallery-section">';
-    html += '<div class="gallery-label">初始单品</div>';
-    html += '<div class="items-row">';
-    for (const it of initialItems) html += fig(it.url, it.label, 'item-fig', '');
-    html += '</div></div>';
-  }
-
-  // 时装（按时装名排序）
+  // 时装（按时装名排序；单品图不在画廊显示，仅行内注入）
   const allCostumes = [...new Set([...Object.keys(costumeArts), ...Object.keys(costumeItems)])].sort();
   for (const name of allCostumes) {
     const arts  = costumeArts[name]  || {};
-    const items = costumeItems[name] || [];
+    if (!arts.scene && !arts.L2D) continue; // 只有单品、无场景图则跳过
     html += `<div class="gallery-section costume-section">`;
     html += `<div class="gallery-label">时装 · ${escapeHtml(name)}</div>`;
     html += '<div class="costume-layout">';
-
-    if (arts.scene || arts.L2D) {
-      html += '<div class="costume-arts">';
-      if (arts.scene) html += fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '');
-      if (arts.L2D)   html += fig(arts.L2D.url,   '立绘',   'portrait-fig', '');
-      html += '</div>';
-    }
-    if (items.length) {
-      html += '<div class="items-row costume-items">';
-      for (const it of items) html += fig(it.url, it.label, 'item-fig', '');
-      html += '</div>';
-    }
+    html += '<div class="costume-arts">';
+    if (arts.scene) html += fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '');
+    if (arts.L2D)   html += fig(arts.L2D.url,   '立绘',   'portrait-fig', '');
+    html += '</div>';
     html += '</div></div>';
   }
 
@@ -186,6 +171,89 @@ function buildCharGallery(file, root) {
   }
 
   html += '</div>'; // .char-gallery
+  return html;
+}
+
+/**
+ * 构建"标签 → 图片URL"映射，用于行内注入：
+ *   {charName}_尤提姆.png   → '尤提姆'
+ *   初始_{单品名}.png       → '{单品名}'
+ *   {时装名}_{单品名}.png   → '{单品名}'
+ */
+function buildInlineImgMap(file, root) {
+  const type = file.meta?.type;
+  if (type !== 'character' && type !== 'npc') return new Map();
+
+  const parts = file.slug.split('/');
+  if (parts[0] !== '角色' || parts.length < 3) return new Map();
+  const org = parts[1];
+  const charName = parts[2];
+
+  const srcDir = path.join(RAW_DIR, '立绘', org, charName);
+  if (!fs.existsSync(srcDir)) return new Map();
+
+  const imgFiles = fs.readdirSync(srcDir).filter(f => IMG_EXTS.test(f));
+  if (!imgFiles.length) return new Map();
+
+  const distDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
+  for (const f of imgFiles) copyImgIfMissing(path.join(srcDir, f), path.join(distDir, f));
+
+  const urlBase = `${root}assets/${encodeUrlPath('立绘', org, charName)}/`;
+
+  // 先收集时装名
+  const costumeNames = new Set();
+  for (const f of imgFiles) {
+    const stem = f.replace(IMG_EXTS, '');
+    if (stem.startsWith('衣着_')) {
+      const rest = stem.slice(3);
+      costumeNames.add(rest.endsWith('_L2D') ? rest.slice(0, -4) : rest);
+    }
+  }
+
+  const map = new Map();
+  for (const f of imgFiles) {
+    const stem = f.replace(IMG_EXTS, '');
+    const url  = urlBase + encodeURIComponent(f);
+
+    if (stem.startsWith(charName + '_')) {
+      const label = stem.slice(charName.length + 1);
+      if (label === '尤提姆') map.set('尤提姆', url);
+      // 其他立绘变体（初始/洞悉/基础）不做行内注入
+
+    } else if (stem.startsWith('初始_')) {
+      map.set(stem.slice(3), url);
+
+    } else if (!stem.startsWith('衣着_')) {
+      const sep = stem.indexOf('_');
+      const prefix = sep > 0 ? stem.slice(0, sep) : '';
+      if (prefix && costumeNames.has(prefix)) {
+        map.set(stem.slice(sep + 1), url);
+      }
+    }
+  }
+  return map;
+}
+
+/**
+ * 在渲染好的 HTML 中，把 <strong>LABEL</strong>（位于 li 或 p 内）
+ * 的左侧注入单品小图，使用 float:left 浮动排版。
+ * 也支持 startsWith 匹配（如 "尤提姆 Udimo" 匹配 label="尤提姆"）。
+ */
+function injectInlineImages(html, inlineMap) {
+  if (!inlineMap.size) return html;
+
+  for (const [label, url] of inlineMap) {
+    const alt = escapeHtml(label);
+    const imgHtml = `<img class="item-inline-img lb-trigger" src="${url}" alt="${alt}" loading="lazy" data-src="${url}">`;
+    const esc = label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // 匹配 <strong>{label}…</strong>（精确开头），在其前面插入图片
+    // 只注入一次（第一次出现），避免重复
+    const re = new RegExp(`(<strong>)(${esc}[^<]*</strong>)`);
+    if (re.test(html)) {
+      html = html.replace(re, `${imgHtml}$1$2`);
+    }
+  }
   return html;
 }
 
@@ -476,6 +544,9 @@ for (const file of files) {
   // Wiki Link → HTML 链接
   let mdBody = processWikiLinks(parsed.content, file.slug);
 
+  // 组装页面
+  const root = relativeRoot(file.url);
+
   let contentHtml = marked.parse(mdBody);
 
   // 给 heading 添加 anchor id（基于纯文本内容）
@@ -486,8 +557,10 @@ for (const file of files) {
     return `<h${level} id="${safeId}">${inner}</h${level}>`;
   });
 
-  // 组装页面
-  const root = relativeRoot(file.url);
+  // 行内单品 / 尤提姆图片注入
+  const inlineMap = buildInlineImgMap(file, root);
+  contentHtml = injectInlineImages(contentHtml, inlineMap);
+
   const title = parsed.data.title || (file.slug === 'index' ? '首页' : file.name);
   const navHtml = buildNav(file.url);
   const breadcrumbs = buildBreadcrumbs(file.slug, root);
