@@ -824,10 +824,13 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   clear: both;
   margin: 28px auto;
   text-align: center;
+  max-width: 640px;
 }
 .story-img-block img {
-  max-width: 640px;
-  width: 100%;
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
   border-radius: var(--radius);
   cursor: zoom-in;
   border: 1px solid var(--border-light);
