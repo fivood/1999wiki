@@ -609,6 +609,28 @@ function buildMetaBar(meta) {
   return `<div class="meta-bar">${tags.map(t => `<span class="meta-tag">${t}</span>`).join('')}</div>`;
 }
 
+/* ── 加粗修复 ──
+ * marked 遵循 CommonMark 的 emphasis flanking 规则：** 作为定界符时，
+ * 紧邻中文/全角标点（如 “”《》（）：）或紧邻已转成 HTML 的 [[链接]] 时，
+ * 会因「左/右 flanking」判定失败而无法成对解析，导致 **加粗** 原样残留。
+ * 这里在 marked.parse 之前，先把成对的 **…**（同一行内、内容首尾非空白）
+ * 直接转成 <strong>…</strong>，绕开 flanking 规则。
+ * - 先用占位符保护 fenced code 与 inline code，避免误伤代码里的 **。
+ * - 转义写法 \*\* 不含相邻的两个星号，天然不会被双星号正则匹配，因此不受影响。
+ */
+function fixCjkBold(md) {
+  const stash = [];
+  const protect = (s) => { stash.push(s); return '\u0000' + (stash.length - 1) + '\u0000'; };
+  md = md.replace(/```[\s\S]*?```/g, protect);   // 围栏代码块
+  md = md.replace(/`[^`\n]*`/g, protect);        // 行内代码
+  md = md.replace(/\*\*(?!\s)([^\n]+?)(?<!\s)\*\*/g, (m, inner) => {
+    if (/^\*+$/.test(inner)) return m;           // 形如 **** 之类，保持原样
+    return '<strong>' + inner + '</strong>';
+  });
+  md = md.replace(/\u0000(\d+)\u0000/g, (m, i) => stash[+i]);
+  return md;
+}
+
 /* ── Wiki Link 转换 ── */
 function processWikiLinks(mdText, currentSlug) {
   return mdText.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (match, target, display) => {
@@ -776,6 +798,8 @@ async function buildAll() {
 
     // Wiki Link → HTML 链接
     let mdBody = processWikiLinks(parsed.content, file.slug);
+    // 加粗修复：绕开 marked 在中文/全角标点边界的 flanking 失败
+    mdBody = fixCjkBold(mdBody);
 
     // 组装页面
     const root = relativeRoot(file.url);
