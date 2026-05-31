@@ -93,6 +93,7 @@ function buildCharGallery(file, root) {
   const costumeItems = {};               // name → [{url, label}]
   const initialItems = [];
   const misc        = [];
+  let   signature   = null;              // {url, label} —— {charName}_签名 收藏图
 
   // 先收集时装名，供后续匹配单品用
   const costumeNames = new Set();
@@ -111,7 +112,10 @@ function buildCharGallery(file, root) {
     if (stem === charName || stem.startsWith(charName + '_')) {
       const label = stem.replace(charName + '_', '') || charName;
       // 尤提姆作为行内注入，不进入立绘行
-      if (label !== '尤提姆') portraits.push({ url, label });
+      if (label === '尤提姆') continue;
+      // 签名为独立的收藏图，单独成区
+      if (label === '签名') { signature = { url, label: charName }; continue; }
+      portraits.push({ url, label });
 
     } else if (stem.startsWith('衣着_')) {
       const rest = stem.slice(3);
@@ -184,7 +188,18 @@ function buildCharGallery(file, root) {
         + (arts.L2D   ? fig(arts.L2D.url,   '立绘',   'portrait-fig', '') : '')
         + '</div></div></div>';
     });
-    html += makeTabGroup(['立绘', ...costumePortraitList], [portraitPanelHtml, ...costumePanels]);
+    // 有签名图则附加一个"签名"页卡
+    const tabLabels = ['立绘', ...costumePortraitList];
+    const tabPanels = [portraitPanelHtml, ...costumePanels];
+    if (signature) {
+      tabLabels.push('签名');
+      tabPanels.push(
+        '<div class="gallery-section signature-section">'
+        + `<figure class="signature-fig">${imgTag(signature.url, signature.label + '_签名', '')}</figure>`
+        + '</div>'
+      );
+    }
+    html += makeTabGroup(tabLabels, tabPanels);
   } else {
     // 无时装：平铺
     if (portraits.length) {
@@ -196,6 +211,11 @@ function buildCharGallery(file, root) {
       html += '<div class="gallery-section"><div class="gallery-label">附图</div><div class="portraits-row">';
       for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
       html += '</div></div>';
+    }
+    if (signature) {
+      html += '<div class="gallery-section signature-section"><div class="gallery-label">签名</div>'
+        + `<figure class="signature-fig">${imgTag(signature.url, signature.label + '_签名', '')}</figure>`
+        + '</div>';
     }
   }
 
