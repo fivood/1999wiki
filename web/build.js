@@ -686,29 +686,57 @@ function extractSummary(file, maxLen = 220) {
 }
 
 /**
- * 获取词条代表图 URL（相对于 dist 根目录，用于报纸首页）。
+ * 在所有 org 下查找指定角色名的代表立绘 URL。
  * 优先级：{角色名}_初始 → 洞悉 → 基础
- * 非角色词条返回 null。
  */
-function getRepresentativeImage(file) {
-  const type = file.meta?.type;
-  if (type !== 'character' && type !== 'npc') return null;
-  const parts = file.slug.split('/');
-  if (parts[0] !== '角色' || parts.length < 3) return null;
-  const org = parts[1], charName = parts[2];
-  const srcDir = path.join(RAW_DIR, '立绘', org, charName);
-  if (!fs.existsSync(srcDir)) return null;
-  for (const stem of ['初始', '洞悉', '基础']) {
-    for (const ext of ['.png', '.jpg', '.jpeg', '.webp']) {
-      const f = `${charName}_${stem}${ext}`;
-      const src = path.join(srcDir, f);
-      if (fs.existsSync(src)) {
-        const destDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
-        copyImgIfMissing(src, path.join(destDir, f));
-        return `assets/${encodeUrlPath('立绘', org, charName)}/${encodeURIComponent(f)}`;
+function findCharPortraitUrl(charName) {
+  const liDir = path.join(RAW_DIR, '立绘');
+  if (!fs.existsSync(liDir)) return null;
+  const orgs = fs.readdirSync(liDir).filter(d =>
+    fs.statSync(path.join(liDir, d)).isDirectory()
+  );
+  for (const org of orgs) {
+    const srcDir = path.join(liDir, org, charName);
+    if (!fs.existsSync(srcDir)) continue;
+    for (const stem of ['初始', '洞悉', '基础']) {
+      for (const ext of ['.png', '.jpg', '.jpeg', '.webp']) {
+        const f = `${charName}_${stem}${ext}`;
+        const src = path.join(srcDir, f);
+        if (fs.existsSync(src)) {
+          const destDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
+          copyImgIfMissing(src, path.join(destDir, f));
+          return `assets/${encodeUrlPath('立绘', org, charName)}/${encodeURIComponent(f)}`;
+        }
       }
     }
   }
+  return null;
+}
+
+/**
+ * 获取词条代表图 URL（相对于 dist 根目录，用于报纸首页）。
+ * - character/npc: 自身立绘
+ * - event_summary: featured_chars[0] 的立绘
+ * - 其他类型暂无代表图
+ */
+function getRepresentativeImage(file) {
+  const type = file.meta?.type;
+
+  if (type === 'character' || type === 'npc') {
+    const parts = file.slug.split('/');
+    if (parts[0] !== '角色' || parts.length < 3) return null;
+    const charName = parts[2];
+    return findCharPortraitUrl(charName);
+  }
+
+  // 活动概要：优先用 featured_chars 第一个角色的立绘
+  if (type === 'event_summary' && Array.isArray(file.meta.featured_chars)) {
+    for (const name of file.meta.featured_chars) {
+      const url = findCharPortraitUrl(name);
+      if (url) return url;
+    }
+  }
+
   return null;
 }
 
@@ -723,15 +751,38 @@ function generateNewspaperHome(files) {
     if (img) imgMap.set(f.slug, img);
   }
 
-  // 打乱后：有图的优先进入头条位置
+  // 打乱
   const shuffled = [...candidates].sort(() => 0.5 - Math.random());
-  const withImg  = shuffled.filter(f =>  imgMap.has(f.slug));
-  const noImg    = shuffled.filter(f => !imgMap.has(f.slug));
-  const pool = [...withImg, ...noImg];
-  if (pool.length < 3) return '';
+  if (shuffled.length < 3) return '';
 
-  const selected = pool.slice(0, 7);
-  const [headline, ...stories] = selected;   // stories: 6篇
+  const isChar = f => f.meta?.type === 'character' || f.meta?.type === 'npc';
+  const chars  = shuffled.filter(isChar);
+  const others = shuffled.filter(f => !isChar(f));
+
+  // 头条：从有图的池子里取（chars 通常有图，event_summary 现在也可能有图）
+  const withImg = shuffled.filter(f => imgMap.has(f.slug));
+  const headline = withImg[0] || shuffled[0];
+
+  // 6 篇要闻：避免角色一统天下——限制最多 2 个角色，至少 4 个其他类型
+  // （考虑头条通常已是角色或事件概要，正文里以多样性优先）
+  const headlineIsChar = isChar(headline);
+  const remainingChars  = chars.filter(f => f.slug !== headline.slug);
+  const remainingOthers = others.filter(f => f.slug !== headline.slug);
+  // 头条已占一个角色席位时，正文最多 1 个角色；否则正文最多 2 个角色
+  const maxCharsInStories = headlineIsChar ? 1 : 2;
+  const charPick  = remainingChars.slice(0, Math.min(maxCharsInStories, remainingChars.length));
+  const otherPick = remainingOthers.slice(0, Math.max(0, 6 - charPick.length));
+
+  // 若 others 不够（小 wiki 早期），用 chars 补齐
+  let stories = [...charPick, ...otherPick];
+  if (stories.length < 6) {
+    const overflow = remainingChars.slice(charPick.length, charPick.length + (6 - stories.length));
+    stories = [...stories, ...overflow];
+  }
+  // 类型交错：再洗一次牌
+  stories = stories.sort(() => 0.5 - Math.random()).slice(0, 6);
+
+  const selected = [headline, ...stories];
 
   const dateStr  = '<span id="newspaperDate"></span>';
   const issueNum = Math.floor(Math.random() * 900) + 100;
