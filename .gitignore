@@ -21,8 +21,12 @@ Thumbs.db
 *.swp
 *.swo
 
-# Claude Code
-.claude/
+# Claude Code（仅排除本地用户/缓存内容；settings.json 与 agents/ 入版本）
+.claude/worktrees/
+.claude/settings.local.json
+.claude/projects/
+.claude/todos/
+.claude/shell-snapshots/
 
 # CG过场图（体积大，仅本地参考）
 raw/CG/
