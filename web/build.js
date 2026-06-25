@@ -307,13 +307,15 @@ function buildInlineImgMap(file, root) {
 
   const urlBase = `${root}assets/${encodeUrlPath('立绘', org, charName)}/`;
 
-  // 先收集时装名
+  // 先收集时装名（支持 _L2D / _立绘 / 无后缀三种形式）
+  const stripCostumeSuffix2 = (s) =>
+    s.endsWith('_L2D') ? s.slice(0, -4) :
+    s.endsWith('_立绘') ? s.slice(0, -3) : s;
   const costumeNames = new Set();
   for (const f of imgFiles) {
     const stem = f.replace(IMG_EXTS, '');
     if (stem.startsWith('衣着_')) {
-      const rest = stem.slice(3);
-      costumeNames.add(rest.endsWith('_L2D') ? rest.slice(0, -4) : rest);
+      costumeNames.add(stripCostumeSuffix2(stem.slice(3)));
     }
   }
 
@@ -365,11 +367,76 @@ function injectInlineImages(html, inlineMap) {
 }
 
 /**
+ * 解析 raw/角色/{charName}.md 的 # 单品 段，返回单品列表。
+ * 每个单品块格式：第一行 = 中文名（可能带引号）；后续行 = 英文名/估值/描述。
+ */
+function loadRawItems(charName) {
+  const rawPath = path.join(RAW_DIR, '角色', charName + '.md');
+  if (!fs.existsSync(rawPath)) return null;
+  const allLines = fs.readFileSync(rawPath, 'utf8').split(/\r?\n/);
+  // 定位 # 单品 标题行
+  let start = -1;
+  for (let i = 0; i < allLines.length; i++) {
+    if (/^#{1,6}\s*单品/.test(allLines[i])) { start = i + 1; break; }
+  }
+  if (start < 0) return null;
+  // 截至下一个任意级别 heading 或 整行粗体标记（如 **文化**：）
+  let end = allLines.length;
+  for (let i = start; i < allLines.length; i++) {
+    const ln = allLines[i].trim();
+    if (/^#{1,6}\s/.test(allLines[i])) { end = i; break; }
+    if (/^\*\*[^*]+\*\*[:：]?\s*$/.test(ln)) { end = i; break; }
+  }
+  const body = allLines.slice(start, end).join('\n')
+    .replace(/^---+\s*$/gm, '')
+    .trim();
+  if (!body) return null;
+  const blocks = body.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
+  // 引号字符 class：ASCII 单/双引号、中文 ""''、日文「」『』、德式 „"
+  const QUOTE_RE = /^["'“”‘’„‟「」『』]+|["'“”‘’„‟「」『』]+$/g;
+  return blocks.map(block => {
+    const lines = block.split('\n').map(s => s.trim()).filter(Boolean);
+    const firstLine = lines[0] || '';
+    const name = firstLine.replace(QUOTE_RE, '');
+    return { name, firstLine, lines, block };
+  });
+}
+
+/**
+ * 把 raw 单品块渲染为 item-card HTML 片段。
+ * 第一行 = 名称（h4）；第二行（若为纯英文/拼音）= meta；其余 = 段落正文。
+ */
+function renderItemCard(item, imgUrl) {
+  const escName = escapeHtml(item.name);
+  const imgHtml = imgUrl
+    ? `<img class="item-card-img lb-trigger" src="${imgUrl}" alt="${escName}" loading="lazy" data-src="${imgUrl}">`
+    : '';
+  const lines = item.lines.slice(); // 拷贝
+  lines.shift(); // 移除第一行（名称）
+  // 第二行若为纯英文（含空格、引号、连字符），视为英文名 meta
+  let metaParts = [];
+  if (lines.length && /^[\sA-Za-z"‘-‟'\-.()&,!:;]+$/.test(lines[0])) {
+    metaParts.push(lines.shift());
+  }
+  // 第三行若以"估值/雨滴/利齿子儿/无估值/雨滴..."等开头，视为估值 meta
+  if (lines.length && /^(雨滴|利齿子儿|无估值|无信任|未估价)/.test(lines[0])) {
+    metaParts.push(lines.shift());
+  }
+  const meta = metaParts.length
+    ? `<p class="item-card-meta">${metaParts.map(escapeHtml).join(' · ')}</p>`
+    : '';
+  const body = lines.map(l => `<p>${escapeHtml(l)}</p>`).join('');
+  return `<div class="item-card">${imgHtml}<div class="item-card-body"><h4 class="item-card-name">${escName}</h4>${meta}${body}</div></div>`;
+}
+
+/**
  * 对渲染后的文章 HTML，找到"单品 / 随身物件"段落的 <ul>，
  * 按时装（初始 / 时装A / …）拆分成 gallery-tab-group。
  * 多组时才生成页卡；只有一组则保持原样。
+ *
+ * 若 rawItems 存在，直接用 raw 全文替换 wiki 单品段（单一信息源）。
  */
-function injectItemsTabs(html, inlineMap) {
+function injectItemsTabs(html, inlineMap, rawItems) {
   if (!inlineMap || inlineMap.size === 0) return html;
 
   // 从 inlineMap 推断每个 label 所属时装
@@ -388,8 +455,48 @@ function injectItemsTabs(html, inlineMap) {
   const h2Re = /<h2[^>]*>[\s\S]*?单品[\s\S]*?<\/h2>/;
   const h2Match = html.match(h2Re);
   if (!h2Match) return html;
+  const h2Start = html.indexOf(h2Match[0]);
+  const h2End = h2Start + h2Match[0].length;
 
-  const h2End = html.indexOf(h2Match[0]) + h2Match[0].length;
+  // ── 优先路径：rawItems 存在时，完全替换 单品 段 ───────────────────
+  if (rawItems && rawItems.length > 0) {
+    // 找下一个 h2 或 文档末尾，作为 section 结尾
+    const nextH2Re = /<h2[^>]*>/g;
+    nextH2Re.lastIndex = h2End;
+    const nextH2 = nextH2Re.exec(html);
+    const sectionEnd = nextH2 ? nextH2.index : html.length;
+
+    // 按时装归类 rawItems
+    const groups = new Map(); // costume → items[]
+    for (const item of rawItems) {
+      const costume = labelCostume.get(item.name) || '初始';
+      if (!groups.has(costume)) groups.set(costume, []);
+      groups.get(costume).push(item);
+    }
+    // 排序：初始 优先，其余按字母
+    const costumeOrder = [...groups.keys()].sort((a, b) =>
+      a === '初始' ? -1 : b === '初始' ? 1 : a.localeCompare(b)
+    );
+
+    let tabHtml = '<div class="gallery-tab-group items-tab-group">';
+    tabHtml += '<div class="gallery-tabs" role="tablist">';
+    costumeOrder.forEach((c, i) =>
+      tabHtml += `<button class="gallery-tab${i === 0 ? ' active' : ''}" role="tab">${escapeHtml(c)}</button>`
+    );
+    tabHtml += '</div>';
+    costumeOrder.forEach((c, i) => {
+      tabHtml += `<div class="gallery-panel${i === 0 ? ' active' : ''}"><div class="item-cards">`;
+      for (const item of groups.get(c)) {
+        tabHtml += renderItemCard(item, inlineMap.get(item.name));
+      }
+      tabHtml += '</div></div>';
+    });
+    tabHtml += '</div>';
+
+    return html.slice(0, h2End) + tabHtml + html.slice(sectionEnd);
+  }
+
+  // ── 回退路径：原 ul-based 分组（rawItems 不可用时） ───────────────
   const ulStart = html.indexOf('<ul>', h2End);
   if (ulStart === -1) return html;
   const ulEnd   = html.indexOf('</ul>', ulStart) + 5;
@@ -900,8 +1007,14 @@ async function buildAll() {
     // 行内单品 / 尤提姆图片注入
     const inlineMap = buildInlineImgMap(file, root);
     contentHtml = injectInlineImages(contentHtml, inlineMap);
-    // 单品段落按时装分组为页卡（多组时启用）
-    contentHtml = injectItemsTabs(contentHtml, inlineMap);
+    // 单品段落：优先用 raw/角色/{name}.md 的原文注入；否则按时装分组现有 ul
+    let rawItemsForChar = null;
+    if (file.meta?.type === 'character' || file.meta?.type === 'npc') {
+      const parts = file.slug.split('/');
+      const charName = parts[parts.length - 1];
+      rawItemsForChar = loadRawItems(charName);
+    }
+    contentHtml = injectItemsTabs(contentHtml, inlineMap, rawItemsForChar);
 
     const title = parsed.data.title || (file.slug === 'index' ? '首页' : file.name);
     const navHtml = buildNav(file.url);

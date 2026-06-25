@@ -1018,6 +1018,56 @@ article li:has(.item-inline-img) {
   overflow: hidden;
 }
 
+/* 单品卡片：raw 原文注入的样式 */
+.items-tab-group .item-cards {
+  display: grid;
+  gap: 14px;
+  margin-top: 8px;
+}
+.item-card {
+  display: flex;
+  gap: 14px;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+}
+.item-card-img {
+  flex-shrink: 0;
+  width: 92px;
+  height: 92px;
+  object-fit: contain;
+  object-position: center;
+  background: var(--bg);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  cursor: zoom-in;
+  transition: opacity .15s;
+}
+.item-card-img:hover { opacity: .82; }
+.item-card-body { flex: 1 1 auto; min-width: 0; }
+.item-card-name {
+  margin: 0 0 4px;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+.item-card-meta {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+.item-card-body p {
+  margin: 0 0 6px;
+  line-height: 1.55;
+}
+.item-card-body p:last-child { margin-bottom: 0; }
+
+@media (max-width: 768px) {
+  .item-card { flex-direction: column; }
+  .item-card-img { width: 100%; height: auto; max-height: 180px; }
+}
+
 /* 移动端：立绘允许单列换行 */
 @media (max-width: 768px) {
   .portraits-row { flex-wrap: wrap; }
