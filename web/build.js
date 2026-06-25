@@ -96,12 +96,15 @@ function buildCharGallery(file, root) {
   let   signature   = null;              // {url, label} —— {charName}_签名 收藏图
 
   // 先收集时装名，供后续匹配单品用
+  // 命名规范：衣着_{名}_立绘.png + 衣着_{名}_L2D.png（双文件）；旧式 衣着_{名}.png 兼容
+  const stripCostumeSuffix = (s) =>
+    s.endsWith('_L2D') ? s.slice(0, -4) :
+    s.endsWith('_立绘') ? s.slice(0, -3) : s;
   const costumeNames = new Set();
   for (const f of imgFiles) {
     const stem = f.replace(IMG_EXTS, '');
     if (stem.startsWith('衣着_')) {
-      const rest = stem.slice(3);
-      costumeNames.add(rest.endsWith('_L2D') ? rest.slice(0, -4) : rest);
+      costumeNames.add(stripCostumeSuffix(stem.slice(3)));
     }
   }
 
@@ -120,9 +123,11 @@ function buildCharGallery(file, root) {
     } else if (stem.startsWith('衣着_')) {
       const rest = stem.slice(3);
       const isL2D = rest.endsWith('_L2D');
-      const name  = isL2D ? rest.slice(0, -4) : rest;
+      const isLi  = rest.endsWith('_立绘');
+      const name  = stripCostumeSuffix(rest);
       if (!costumeArts[name]) costumeArts[name] = {};
-      costumeArts[name][isL2D ? 'L2D' : 'scene'] = { url, label: name };
+      // _L2D → L2D；_立绘 或 无后缀 → portrait（立绘版本）
+      costumeArts[name][isL2D ? 'L2D' : 'portrait'] = { url, label: name };
 
     } else if (stem.startsWith('初始_')) {
       initialItems.push({ url, label: stem.slice(3) });
@@ -144,8 +149,8 @@ function buildCharGallery(file, root) {
     `<figure class="${figCls}">${imgTag(url, label, imgCls)}<figcaption>${escapeHtml(label)}</figcaption></figure>`;
 
   const allCostumes = [...new Set([...Object.keys(costumeArts), ...Object.keys(costumeItems)])].sort();
-  // 有立绘（场景图/L2D）的时装
-  const costumePortraitList = allCostumes.filter(n => costumeArts[n]?.scene || costumeArts[n]?.L2D);
+  // 有立绘（立绘版/L2D版）的时装
+  const costumePortraitList = allCostumes.filter(n => costumeArts[n]?.portrait || costumeArts[n]?.L2D);
 
   // ── 辅助：生成独立页卡组（每组独立作用域）────────────────────────
   const makeTabGroup = (labels, panels) => {
@@ -184,8 +189,8 @@ function buildCharGallery(file, root) {
     const costumePanels = costumePortraitList.map(name => {
       const arts = costumeArts[name] || {};
       return '<div class="gallery-section costume-section"><div class="costume-layout"><div class="costume-arts">'
-        + (arts.scene ? fig(arts.scene.url, '场景图', 'costume-art-fig scene-fig', '') : '')
-        + (arts.L2D   ? fig(arts.L2D.url,   '立绘',   'portrait-fig', '') : '')
+        + (arts.portrait ? fig(arts.portrait.url, '立绘', 'portrait-fig',          '') : '')
+        + (arts.L2D      ? fig(arts.L2D.url,      'L2D',  'costume-art-fig L2D-fig', '') : '')
         + '</div></div></div>';
     });
     // 有签名图则附加一个"签名"页卡
@@ -201,21 +206,28 @@ function buildCharGallery(file, root) {
     }
     html += makeTabGroup(tabLabels, tabPanels);
   } else {
-    // 无时装：平铺
-    if (portraits.length) {
-      html += '<div class="gallery-section"><div class="gallery-label">立绘</div><div class="portraits-row">';
-      for (const p of portraits) html += fig(p.url, p.label, 'portrait-fig', '');
-      html += '</div></div>';
-    }
-    if (misc.length) {
-      html += '<div class="gallery-section"><div class="gallery-label">附图</div><div class="portraits-row">';
-      for (const m of misc) html += fig(m.url, m.label, 'portrait-fig', '');
-      html += '</div></div>';
-    }
+    // 无时装：若有签名，把 立绘 + 签名 也做成 tab 以保持一致；否则平铺
+    const portraitPanelHtml = (() => {
+      let p = '';
+      if (portraits.length) {
+        p += '<div class="gallery-section"><div class="portraits-row">';
+        for (const x of portraits) p += fig(x.url, x.label, 'portrait-fig', '');
+        p += '</div></div>';
+      }
+      if (misc.length) {
+        p += '<div class="gallery-section"><div class="gallery-label">附图</div><div class="portraits-row">';
+        for (const m of misc) p += fig(m.url, m.label, 'portrait-fig', '');
+        p += '</div></div>';
+      }
+      return p;
+    })();
     if (signature) {
-      html += '<div class="gallery-section signature-section"><div class="gallery-label">签名</div>'
+      const signaturePanelHtml = '<div class="gallery-section signature-section">'
         + `<figure class="signature-fig">${imgTag(signature.url, signature.label + '_签名', '')}</figure>`
         + '</div>';
+      html += makeTabGroup(['立绘', '签名'], [portraitPanelHtml, signaturePanelHtml]);
+    } else {
+      html += portraitPanelHtml;
     }
   }
 
