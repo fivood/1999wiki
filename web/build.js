@@ -401,11 +401,14 @@ function loadRawItems(charName) {
 }
 
 // 引号字符 class（ASCII / 中文 ""''/ 日文「」『』/ 德式 „‟）
-// 注意：虚构集 raw 部分单品名两边都使用了 "（U+201C 左引号），不规范；
-// 用 + 匹配任意多次保证两端都被剥掉。
-const QUOTE_CHARS = /["'“”‘’„‟「」『』]/g;
+const QUOTE_CHARS_ALL = /["'“”‘’„‟「」『』]/g;
+// 只剥前后（用于宽容匹配）
 function stripQuotes(s) {
-  return s.replace(/^["'“”‘’„‟「」『』]+|["'“”‘’„‟「」『』]+$/g, '');
+  return s.replace(/^["'“”‘’„‟「」『』]+|["'“”‘’„‟「""’„‟「」『』]+$/g, '');
+}
+// 全剥（用于显示名，处理星锑 "X"Y、卡戎 "X" 等不规则用法）
+function stripAllQuotes(s) {
+  return s.replace(QUOTE_CHARS_ALL, '').trim();
 }
 
 /**
@@ -413,7 +416,8 @@ function stripQuotes(s) {
  * 第一行 = 名称（h4）；第二行（若为纯英文/拼音）= meta；其余 = 段落正文。
  */
 function renderItemCard(item, imgUrl) {
-  const escName = escapeHtml(item.name);
+  // 显示名全剥引号；item.name（仅剥前后）保留用于匹配
+  const escName = escapeHtml(stripAllQuotes(item.firstLine));
   const imgHtml = imgUrl
     ? `<img class="item-card-img lb-trigger" src="${imgUrl}" alt="${escName}" loading="lazy" data-src="${imgUrl}">`
     : '';
