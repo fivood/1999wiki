@@ -11,7 +11,9 @@ const path = require('path');
 
 const LIPING = 'g:\\1999story\\raw\\立绘';
 const CHECKLIST = path.join(LIPING, '补L2D清单.md');
-const NODES = ['初始', '洞悉', '尤提姆'];
+// 仅 洞悉 节点需要 _L2D + _立绘 双版；初始/尤提姆 都是单文件
+const NODES = ['洞悉'];
+const SINGLE_NODES = ['初始', '尤提姆']; // 单文件节点：旧式 {角色}_{节点}.png 即正确
 
 const issues = [];
 
@@ -104,9 +106,10 @@ if (process.argv.includes('--write')) {
   md += `> 生成于 ${today}，由 \`tools/audit-洞悉.js\` 自动产出。\n`;
   md += `> 复跑：\`node tools/audit-洞悉.js --write\`\n\n`;
   md += `## 命名规范\n\n`;
-  md += `三件套立绘统一命名为 **\`{角色}_{节点}_立绘.png\`** + **\`{角色}_{节点}_L2D.png\`**，\n`;
-  md += `节点 = \`初始\` / \`洞悉\` / \`尤提姆\`。\n\n`;
-  md += `历史上很多角色只存了 \`{角色}_{节点}.png\`（无后缀），属于不规范命名 + 漏存 L2D。\n\n`;
+  md += `- **初始**：单文件 \`{角色}_初始.png\`（无 L2D 版本）\n`;
+  md += `- **洞悉**：双文件 \`{角色}_洞悉_立绘.png\` + \`{角色}_洞悉_L2D.png\`\n`;
+  md += `- **尤提姆**：单文件 \`{角色}_尤提姆.png\`（无 L2D 版本）\n\n`;
+  md += `本清单仅追踪洞悉节点缺失的 L2D 版本（初始/尤提姆 不分 L2D）。\n\n`;
   md += `---\n\n## 待办（${issues.length} 处，涉及 ${Object.keys(byChar).length} 个角色）\n`;
   for (const [key, list] of Object.entries(byChar)) {
     md += `\n### ${key}\n\n`;
