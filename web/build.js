@@ -392,14 +392,20 @@ function loadRawItems(charName) {
     .trim();
   if (!body) return null;
   const blocks = body.split(/\n\s*\n+/).map(b => b.trim()).filter(Boolean);
-  // 引号字符 class：ASCII 单/双引号、中文 ""''、日文「」『』、德式 „"
-  const QUOTE_RE = /^["'“”‘’„‟「」『』]+|["'“”‘’„‟「」『』]+$/g;
   return blocks.map(block => {
     const lines = block.split('\n').map(s => s.trim()).filter(Boolean);
     const firstLine = lines[0] || '';
-    const name = firstLine.replace(QUOTE_RE, '');
+    const name = stripQuotes(firstLine);
     return { name, firstLine, lines, block };
   });
+}
+
+// 引号字符 class（ASCII / 中文 ""''/ 日文「」『』/ 德式 „‟）
+// 注意：虚构集 raw 部分单品名两边都使用了 "（U+201C 左引号），不规范；
+// 用 + 匹配任意多次保证两端都被剥掉。
+const QUOTE_CHARS = /["'“”‘’„‟「」『』]/g;
+function stripQuotes(s) {
+  return s.replace(/^["'“”‘’„‟「」『』]+|["'“”‘’„‟「」『』]+$/g, '');
 }
 
 /**
@@ -413,18 +419,15 @@ function renderItemCard(item, imgUrl) {
     : '';
   const lines = item.lines.slice(); // 拷贝
   lines.shift(); // 移除第一行（名称）
-  // 第二行若为纯英文（含空格、引号、连字符），视为英文名 meta
-  let metaParts = [];
-  if (lines.length && /^[\sA-Za-z"‘-‟'\-.()&,!:;]+$/.test(lines[0])) {
-    metaParts.push(lines.shift());
+  // 第二行若为纯英文（含空格、引号、连字符、数字），视为英文名 meta（保留）
+  let meta = '';
+  if (lines.length && /^[\s\w"‘-‟'\-.()&,!:;]+$/.test(lines[0])) {
+    meta = `<p class="item-card-meta">${escapeHtml(lines.shift())}</p>`;
   }
-  // 第三行若以"估值/雨滴/利齿子儿/无估值/雨滴..."等开头，视为估值 meta
-  if (lines.length && /^(雨滴|利齿子儿|无估值|无信任|未估价)/.test(lines[0])) {
-    metaParts.push(lines.shift());
+  // 第三行若以 估值/信任 关键词开头，识别并丢弃（不显示）
+  if (lines.length && /^(雨滴|利齿子儿|无估值|无信任|未估价|信任达到)/.test(lines[0])) {
+    lines.shift();
   }
-  const meta = metaParts.length
-    ? `<p class="item-card-meta">${metaParts.map(escapeHtml).join(' · ')}</p>`
-    : '';
   const body = lines.map(l => `<p>${escapeHtml(l)}</p>`).join('');
   return `<div class="item-card">${imgHtml}<div class="item-card-body"><h4 class="item-card-name">${escName}</h4>${meta}${body}</div></div>`;
 }
@@ -439,16 +442,27 @@ function renderItemCard(item, imgUrl) {
 function injectItemsTabs(html, inlineMap, rawItems) {
   if (!inlineMap || inlineMap.size === 0) return html;
 
-  // 从 inlineMap 推断每个 label 所属时装
+  // 从 inlineMap 推断每个 label 所属时装；key 双份：原 label + 剥引号 label
   const labelCostume = new Map();
   for (const [label, url] of inlineMap) {
     const fname = decodeURIComponent(url.split('/').pop()).replace(/\.(png|jpg|jpeg|webp)$/i, '');
+    let costume;
     if (fname.startsWith('初始_')) {
-      labelCostume.set(label, '初始');
+      costume = '初始';
     } else {
       const sep = fname.indexOf('_');
-      labelCostume.set(label, sep > 0 ? fname.slice(0, sep) : '初始');
+      costume = sep > 0 ? fname.slice(0, sep) : '初始';
     }
+    labelCostume.set(label, costume);
+    const stripped = stripQuotes(label);
+    if (stripped !== label) labelCostume.set(stripped, costume);
+  }
+  // inlineMap 也做去引号映射（用于 renderItemCard 取图）
+  const stripInlineMap = new Map();
+  for (const [k, v] of inlineMap) {
+    stripInlineMap.set(k, v);
+    const sk = stripQuotes(k);
+    if (sk !== k) stripInlineMap.set(sk, v);
   }
 
   // 找"单品"标题（h2）后的第一个 <ul>
@@ -487,7 +501,7 @@ function injectItemsTabs(html, inlineMap, rawItems) {
     costumeOrder.forEach((c, i) => {
       tabHtml += `<div class="gallery-panel${i === 0 ? ' active' : ''}"><div class="item-cards">`;
       for (const item of groups.get(c)) {
-        tabHtml += renderItemCard(item, inlineMap.get(item.name));
+        tabHtml += renderItemCard(item, stripInlineMap.get(item.name));
       }
       tabHtml += '</div></div>';
     });
