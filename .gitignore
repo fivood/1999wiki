@@ -28,8 +28,17 @@ Thumbs.db
 .claude/todos/
 .claude/shell-snapshots/
 
-# CG过场图（体积大，仅本地参考）
-raw/CG/
+# raw 素材：build 只需要 raw/角色（单品段）+ raw/立绘（图片源），其余全部仅本地
+raw/*
+!raw/角色/
+!raw/立绘/
+!raw/.gitkeep
+
+# 爬取脚本与一次性工具：仅本地
+tools/
 
 # 版本-时空对照表：本地工作参考，不推送
 wiki/世界观/版本-时空对照表.md
+
+# 本地创作（同人文等，仅本地，不推送）
+fukki/
