@@ -28,10 +28,12 @@ Thumbs.db
 .claude/todos/
 .claude/shell-snapshots/
 
-# raw 素材：build 只需要 raw/角色（单品段）+ raw/立绘（图片源），其余全部仅本地
+# raw 素材：build 只需要 raw/角色（单品段）+ raw/立绘（图片源）
+# raw/设定集 是 wiki 一级引用源（官方设定集转录），跨会话有用，也入库
 raw/*
 !raw/角色/
 !raw/立绘/
+!raw/设定集/
 !raw/.gitkeep
 
 # 爬取脚本与一次性工具：仅本地
