@@ -1085,3 +1085,24 @@ article li:has(.item-inline-img) {
 
 /* === 选中高亮 === */
 ::selection { background: rgba(30, 58, 138, 0.12); }
+
+/* === 主题切换按钮（经典版样式） === */
+.theme-switch {
+  flex-shrink: 0;
+  background: #fff;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.theme-switch:hover { border-color: var(--border); color: var(--accent); }
+@media (max-width: 768px) {
+  .theme-switch { font-size: 12px; padding: 5px 8px; }
+}
+
+/* === 像素版专属装饰：经典版隐藏 === */
+.px-edge, .px-coord { display: none; }

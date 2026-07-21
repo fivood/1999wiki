@@ -4,18 +4,36 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{title}} — 1999剧情Wiki</title>
-  <link rel="stylesheet" href="{{root}}style.css">
+  <!-- 双主题：pixel.css = 像素版（默认）；style.css = 经典版 -->
+  <link id="cssPixel" rel="stylesheet" href="{{root}}pixel.css">
+  <link id="cssClassic" rel="stylesheet" href="{{root}}style.css" disabled>
+  <script>
+    /* 主题引导：首绘前按 localStorage 选择样式表，避免闪烁 */
+    (function () {
+      var t = null;
+      try { t = localStorage.getItem('wiki-theme'); } catch (e) {}
+      var theme = (t === 'classic') ? 'classic' : 'pixel';
+      document.documentElement.dataset.theme = theme;
+      document.getElementById('cssPixel').disabled = (theme !== 'pixel');
+      document.getElementById('cssClassic').disabled = (theme !== 'classic');
+    })();
+  </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
 </head>
 <body>
   <header class="site-header">
     <button class="menu-toggle" id="menuToggle" aria-label="切换菜单">☰</button>
-    <a href="{{root}}index.html" class="site-title">📖 1999剧情Wiki<small>THE REVERSE: 1999 CHRONICLE</small></a>
+    <a href="{{root}}index.html" class="site-title"><span class="site-icon">📖 </span><span class="site-name">1999剧情Wiki</span><small>THE REVERSE: 1999 CHRONICLE</small></a>
     <div class="header-search">
       <input type="text" id="searchInput" placeholder="搜索..." autocomplete="off">
       <div id="searchResults" class="search-results"></div>
     </div>
+    <button id="themeSwitch" class="theme-switch" type="button" aria-label="切换界面主题">经典版</button>
   </header>
+
+  <!-- 像素版专属固定装饰（经典版隐藏） -->
+  <div class="px-edge" aria-hidden="true">REVERSE:1999 — STORY ARCHIVE</div>
+  <div class="px-coord" aria-hidden="true">SIG/1999.12.31 // CH-01 ▚▚▚</div>
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
@@ -44,6 +62,24 @@
   </div>
 
   <script>
+    /* 主题切换（像素版 ⇄ 经典版），localStorage 记忆 */
+    const themeSwitch = document.getElementById('themeSwitch');
+    function currentTheme() {
+      return document.documentElement.dataset.theme === 'classic' ? 'classic' : 'pixel';
+    }
+    function updateSwitchLabel() {
+      themeSwitch.textContent = currentTheme() === 'pixel' ? '经典版' : '像素版';
+    }
+    themeSwitch.addEventListener('click', () => {
+      const next = currentTheme() === 'pixel' ? 'classic' : 'pixel';
+      document.documentElement.dataset.theme = next;
+      try { localStorage.setItem('wiki-theme', next); } catch (e) {}
+      document.getElementById('cssPixel').disabled = (next !== 'pixel');
+      document.getElementById('cssClassic').disabled = (next !== 'classic');
+      updateSwitchLabel();
+    });
+    updateSwitchLabel();
+
     /* 移动端菜单切换 */
     const menuToggle = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
@@ -143,6 +179,21 @@
         year: 'numeric', month: 'long', day: 'numeric', weekday: 'long'
       });
     }
+
+    /* 滚动浮现动效（.rv 样式仅像素版定义，经典版无视觉效果） */
+    (function () {
+      if (!('IntersectionObserver' in window)) return;
+      if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const els = document.querySelectorAll('article > *, .np-story');
+      if (!els.length) return;
+      els.forEach(el => el.classList.add('rv'));
+      const io = new IntersectionObserver((entries) => {
+        entries.forEach(en => {
+          if (en.isIntersecting) { en.target.classList.add('in'); io.unobserve(en.target); }
+        });
+      }, { threshold: 0.04, rootMargin: '0px 0px -4% 0px' });
+      els.forEach(el => io.observe(el));
+    })();
   </script>
 </body>
 </html>

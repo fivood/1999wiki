@@ -12,6 +12,7 @@ const RAW_DIR  = path.join(__dirname, '..', 'raw');
 const DIST_DIR = path.join(__dirname, 'dist');
 const TEMPLATE_PATH = path.join(__dirname, 'template.html');
 const CSS_PATH = path.join(__dirname, 'style.css');
+const PIXEL_CSS_PATH = path.join(__dirname, 'pixel.css');
 
 const template = fs.readFileSync(TEMPLATE_PATH, 'utf-8');
 
@@ -1084,6 +1085,7 @@ async function buildAll() {
   /* ── 写入搜索索引 & 复制静态资源 ── */
   fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
   fs.copyFileSync(CSS_PATH, path.join(DIST_DIR, 'style.css'));
+  fs.copyFileSync(PIXEL_CSS_PATH, path.join(DIST_DIR, 'pixel.css'));
 
   console.log(`✅ 构建完成：${files.length} 个页面 → ${DIST_DIR}`);
   console.log(`   搜索索引：${searchDocs.length} 条`);
