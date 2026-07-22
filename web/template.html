@@ -340,14 +340,18 @@
         const hubRect = orb.getBoundingClientRect();
         const vw = window.innerWidth, vh = window.innerHeight;
         const stepA = st.stepA;
+        /* stepA===0 时按文字宽自适应步进（径向线性延伸模式）；否则按 dr 均匀步进（扇形模式） */
+        const variableR = stepA === 0;
+        const gap = st.gap || 20;
 
         /* 逐条按理想（r0 + k·dr, a0 + k·stepA）落位；一旦某条越出视口就停止，之后的隐藏 */
         let rendered = 0;
+        let currentR = st.r0;
         for (let k = 0; k < st.entries.length - st.off; k++) {
           const it = st.entries[st.off + k];
           const a = st.a0 + k * stepA;
           const rad = a * Math.PI / 180;
-          const R = st.r0 + k * st.dr;
+          const R = currentR;
           const item = document.createElement('div');
           item.className = 'px-fan-item' + (a > 95 ? ' flip' : '');
           item.style.setProperty('--a', a.toFixed(2) + 'deg');
@@ -387,7 +391,8 @@
           dot.style.left = rayFrom + 'px';
           item.appendChild(dot);
           if (it.links) {
-            /* 子分组：二级沿本词条射线继续向外级联（一级同时压暗） */
+            /* 子分组：L2 = 沿父词条自身径向线继续向外延伸（同角度、变步长），
+               词条一个接一个排在同一条 spoke 上——这才是"沿径向排开" */
             const openL2 = () => {
               clearTimeout(hideT);
               fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
@@ -395,9 +400,10 @@
               fan1.classList.add('dim');
               fan2State = {
                 entries: it.links,
-                a0: a + 7.5, stepA: 7,
-                r0: R + w + 44, dr: 22,
-                rayBase: R + w + 16,
+                a0: a, stepA: 0,            /* 同角度：与父词条共线 */
+                r0: R + w + 22,             /* 从父词条尾端出发 */
+                dr: 24, gap: 20,            /* 变步长：max(dr, textWidth + gap) */
+                rayBase: R + w + 6,
                 off: 0,
               };
               drawFan(fan2, fan2State, false);
@@ -423,7 +429,9 @@
               goHref(it.h);
             });
           }
-          el.addEventListener('mouseleave', scheduleHide);
+          /* 不给词条挂 mouseleave：wheel 重绘会移除旧节点触发 mouseleave，会误关子菜单；
+             真的离开菜单区域由 orb 层的 mouseleave 判定 */
+          currentR = variableR ? (R + w + gap) : (R + st.dr);
           rendered++;
         }
         st.visibleCount = rendered;
@@ -508,6 +516,7 @@
         else if (!fan2State && canScroll(fan1State)) { st = fan1State; layer = fan1; }
         if (!st) return;
         e.preventDefault();
+        clearTimeout(hideT);   /* 滚轮活跃即视为交互中，取消任何计划的关闭 */
         const maxOff = Math.max(0, st.entries.length - (st.visibleCount || 1));
         const no = Math.max(0, Math.min(maxOff, st.off + (e.deltaY > 0 ? 1 : -1)));
         if (no === st.off) return;
