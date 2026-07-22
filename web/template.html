@@ -436,18 +436,27 @@
         const hubRect = orb.getBoundingClientRect();
         const vw = window.innerWidth, vh = window.innerHeight;
         const stepA = st.stepA;
-        /* stepA===0 时按文字宽自适应步进（径向线性延伸模式）；否则按 dr 均匀步进（扇形模式） */
-        const variableR = stepA === 0;
+        /* 三种落位模式：
+             columns  = 多列 1/4 弧（每列填满弧、超出向外开新列，L3 用）
+             variable = stepA===0 沿同一半径向外线性延伸（L2 老式）
+             linear   = 沿 stepA/dr 均匀增长（L1 扇形） */
+        const useCols = st.slots > 0;
+        const variableR = !useCols && stepA === 0;
         const gap = st.gap || 20;
 
-        /* 逐条按理想（r0 + k·dr, a0 + k·stepA）落位；一旦某条越出视口就停止，之后的隐藏 */
+        /* 逐条按理想（r0 + k·dr, a0 + k·stepA）落位；一旦某条越出视口就停止，之后的隐藏
+           列模式（useCols）下：单条越出改为「跳过并继续」，仅当整列全空时才真正 break */
         let rendered = 0;
         let currentR = st.r0;
+        let colClips = 0;          /* 列模式：本列已连续裁掉的条数 */
+        let colHasHits = false;    /* 列模式：本列是否至少渲染成功一条 */
         for (let k = 0; k < st.entries.length - st.off; k++) {
           const it = st.entries[st.off + k];
-          const a = st.a0 + k * stepA;
+          const slotIdx = useCols ? k % st.slots : k;
+          const col = useCols ? Math.floor(k / st.slots) : 0;
+          const a = st.a0 + slotIdx * stepA;
           const rad = a * Math.PI / 180;
-          const R = currentR;
+          const R = useCols ? st.r0 + col * st.dr : currentR;
           const item = document.createElement('div');
           item.className = 'px-fan-item' + (a > 95 ? ' flip' : '');
           item.style.setProperty('--a', a.toFixed(2) + 'deg');
@@ -473,7 +482,21 @@
             startX > vw - SAFE_MARGIN || endX > vw - SAFE_MARGIN ||
             startY < SAFE_TOP || endY < SAFE_TOP ||
             startY > vh - SAFE_MARGIN || endY > vh - SAFE_MARGIN;
-          if (outOfView) { layer.removeChild(item); break; }
+          if (useCols) {
+            /* 每进入一列前重置该列的命中记账 */
+            if (slotIdx === 0) { colClips = 0; colHasHits = false; }
+          }
+          if (outOfView) {
+            layer.removeChild(item);
+            if (useCols) {
+              colClips++;
+              /* 走到列尾且整列全裁 = 该列被视口完全排除，之后半径更大的列同理，break */
+              if (slotIdx === st.slots - 1 && !colHasHits) break;
+              continue;
+            }
+            break;
+          }
+          if (useCols) colHasHits = true;
 
           /* 射线：从基准半径引至文字起点 */
           const rayFrom = Math.min(st.rayBase, R - 16);
@@ -487,9 +510,11 @@
           dot.style.left = rayFrom + 'px';
           item.appendChild(dot);
           if (it.links) {
-            /* 子分组：L3 = 独立的 1/4 弧（与 L1 同角段但更窄），在 L1 外的环带上从上到下分布；
+            /* 子分组：L3 = 多列 1/4 弧——一列填满 arc 后向"外"（更大半径）开新列继续展开；
                打开 L3 时同时把 L1 白条压暗、L2 保持 dim，避免视觉冲突 */
             const L3_ARC_START = -20, L3_ARC_SPAN = 62;
+            const L3_SLOTS = 10;           /* 每列 10 条（arc 内均匀分布） */
+            const L3_COL_STEP = 130;       /* 列间半径步长（含最长文字宽度余量） */
             const openL2 = () => {
               clearTimeout(hideT);
               fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
@@ -497,14 +522,13 @@
               fan1.classList.add('dim');
               orb.classList.add('l3-open');
               const r2 = r2Now();
-              /* 半径落在 L1 白条外 ~ r2·1.3 环带上；step 按条数自适应（4..9 条区间） */
-              const L3_R = Math.round(r2 * 1.30);
-              const slots = Math.max(6, Math.min(9, it.links.length - 1));
               fan2State = {
                 entries: it.links,
                 a0: L3_ARC_START + dragRot,
-                stepA: (L3_ARC_SPAN - 2) / slots,
-                r0: L3_R, dr: 0,
+                stepA: (L3_ARC_SPAN - 2) / (L3_SLOTS - 1),
+                r0: Math.round(r2 * 1.30),
+                dr: L3_COL_STEP,
+                slots: L3_SLOTS,
                 rayBase: r2 + 20,
                 off: 0,
               };
@@ -534,7 +558,7 @@
           }
           /* 不给词条挂 mouseleave：wheel 重绘会移除旧节点触发 mouseleave，会误关子菜单；
              真的离开菜单区域由 orb 层的 mouseleave 判定 */
-          currentR = variableR ? (R + w + gap) : (R + st.dr);
+          if (!useCols) currentR = variableR ? (R + w + gap) : (R + st.dr);
           rendered++;
         }
         st.visibleCount = rendered;

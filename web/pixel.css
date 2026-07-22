@@ -1320,10 +1320,11 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   .px-orb { display: block; }
 }
 
-/* 过圆心的十字虚线（工程图风味）——非常缓慢地公转，星轨的骨架 */
+/* 过圆心的十字虚线（工程图风味）——很慢地公转，星轨的骨架
+   !important 是为了在系统开了 prefers-reduced-motion 时仍保留 gentle 装饰旋转 */
 .px-orb-cross {
   position: absolute; left: 0; top: 0;
-  animation: px-ring-in 1.2s both, px-orbit-ccw 420s linear infinite;
+  animation: px-ring-in 1.2s both, px-orbit-ccw 180s linear infinite !important;
 }
 .px-orb-cross::before {
   content: '';
@@ -1385,7 +1386,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   position: absolute;
   border-radius: 50% !important;
   pointer-events: none;
-  animation: px-ring-in 1s .2s both, px-ring-pulse 7s ease-in-out infinite;
+  animation: px-ring-in 1s .2s both, px-ring-pulse 7s ease-in-out infinite !important;
 }
 .px-orb-orbit-line.ol-a {
   --or: calc(var(--r1) * 0.72);
@@ -1413,10 +1414,12 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   pointer-events: none;
   animation: px-ring-in .9s .3s both;
 }
-.px-orb-orbit.o1 { animation: px-ring-in .9s .3s both, px-orbit-cw  48s linear infinite; }
-.px-orb-orbit.o2 { animation: px-ring-in .9s .4s both, px-orbit-ccw 118s linear infinite; }
-.px-orb-orbit.o3 { animation: px-ring-in .9s .5s both, px-orbit-cw 220s linear infinite; }
-.px-orb-orbit.o4 { animation: px-ring-in .9s .6s both, px-orbit-ccw 340s linear infinite; }
+/* !important 让轨道在 prefers-reduced-motion: reduce 环境下仍保留 gentle 旋转
+   （周期长、无闪烁、无缩放，不会诱发 vestibular 不适） */
+.px-orb-orbit.o1 { animation: px-ring-in .9s .3s both, px-orbit-cw  24s linear infinite !important; }
+.px-orb-orbit.o2 { animation: px-ring-in .9s .4s both, px-orbit-ccw 58s linear infinite !important; }
+.px-orb-orbit.o3 { animation: px-ring-in .9s .5s both, px-orbit-cw 96s linear infinite !important; }
+.px-orb-orbit.o4 { animation: px-ring-in .9s .6s both, px-orbit-ccw 160s linear infinite !important; }
 /* 星点：绕 hub 定位于 (--pa, --pr)；与父轨一起转 */
 .px-orb-star {
   position: absolute;
@@ -1427,7 +1430,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   transform: rotate(var(--pa)) translate(var(--pr)) translate(-50%, -50%);
   transform-origin: 0 0;
   box-shadow: 0 0 6px rgba(255,255,255,0.55), 0 0 12px rgba(255,255,255,0.25);
-  animation: px-star-pulse 3.4s ease-in-out infinite;
+  animation: px-star-pulse 3.4s ease-in-out infinite !important;
 }
 /* 慧星：星点带一条向内 fade 的尾迹（内侧较亮，向切线方向淡出） */
 .px-orb-star.comet {
