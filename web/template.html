@@ -296,7 +296,7 @@
       const fan1 = orb.querySelector('#pxFan1');
       const fan2 = orb.querySelector('#pxFan2');
       const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const WIN = 8;                     /* 扇形窗口条数：超出用滚轮滑动 */
+      /* 可视条数由 drawFan 每次按视口动态测出（st.visibleCount），滚轮基于此翻窗 */
       const isHome = document.body.classList.contains('px-home');
       let hideT = null;
       let fan1State = null, fan2State = null;
@@ -327,35 +327,28 @@
       }
 
       /* ── 径向扇形菜单：每条词条 = 沿所在半径方向书写的文字射线（径向指向骰子），
-         从被选中的一级白条外端继续向外级联展开；超过 WIN 条开窗，滚轮滑动 ── */
+         从被选中的一级白条外端继续向外级联展开；越出视口的直接不渲染（严格裁切），
+         隐形滚轮上下移动窗口 ── */
       const r2Now = () => ring2El.offsetWidth / 2;
       /* 一级白条伸长后的外端半径（与 CSS .px-orb-bar.act 的 padding 增量对应） */
       const BAR_EXT = 68;
+      /* 视口安全边距：越出该边界的词条不再渲染 */
+      const SAFE_TOP = 60, SAFE_MARGIN = 10;
       function drawFan(layer, st, instant) {
         layer.innerHTML = '';
         layer.classList.toggle('instant', !!instant);
         const hubRect = orb.getBoundingClientRect();
         const vw = window.innerWidth, vh = window.innerHeight;
-        const overflow = st.entries.length > WIN;
-        const vis = overflow ? st.entries.slice(st.off, st.off + WIN) : st.entries;
-        /* 自适应角度步长：末条（最大半径+估算文字长）不越出视口下缘时才用满步长，
-           视口偏矮则压缩张角，保证半径级联完整、逐层单调变大 */
-        let stepA = st.stepA;
-        if (vis.length > 1) {
-          const outerR = st.r0 + (vis.length - 1) * st.dr + 120;
-          const fitSin = (vh - hubRect.top - 40) / outerR;
-          if (fitSin < 1) {
-            const maxA = Math.asin(Math.max(0.1, fitSin)) * 180 / Math.PI;
-            if (st.a0 + (vis.length - 1) * stepA > maxA) {
-              stepA = Math.max(4.5, (maxA - st.a0) / (vis.length - 1));
-            }
-          }
-        }
-        vis.forEach((it, k) => {
+        const stepA = st.stepA;
+
+        /* 逐条按理想（r0 + k·dr, a0 + k·stepA）落位；一旦某条越出视口就停止，之后的隐藏 */
+        let rendered = 0;
+        for (let k = 0; k < st.entries.length - st.off; k++) {
+          const it = st.entries[st.off + k];
           const a = st.a0 + k * stepA;
           const rad = a * Math.PI / 180;
+          const R = st.r0 + k * st.dr;
           const item = document.createElement('div');
-          /* 深角度（>95°）整字翻转，保持文字不倒置 */
           item.className = 'px-fan-item' + (a > 95 ? ' flip' : '');
           item.style.setProperty('--a', a.toFixed(2) + 'deg');
           item.style.setProperty('--d', (k * 36) + 'ms');
@@ -365,16 +358,24 @@
           if (it.h) el.href = it.h;
           else el.tabIndex = 0;
           item.appendChild(el);
-          layer.appendChild(item);
-          /* 先量文字宽，再按视口钳制半径（词条不出屏），下限保持在环外 */
+          layer.appendChild(item);   /* 先挂到 DOM 才能量文字宽 */
           const w = el.offsetWidth;
-          let R = st.r0 + k * st.dr;
-          const cos = Math.cos(rad), sin = Math.sin(rad);
-          if (cos > 0.05) R = Math.min(R, (vw - hubRect.left - 26) / cos - w);
-          if (sin > 0.05) R = Math.min(R, (vh - hubRect.top - 40) / sin - w);
-          R = Math.max(R, st.rMin);
           el.style.left = R + 'px';
-          /* 射线：从基准半径引至文字起点，逐层拉长（草图中的「线条」本体） */
+
+          /* 视口裁切：只要文字末端出屏，本条及以后一律不渲染 */
+          const cos = Math.cos(rad), sin = Math.sin(rad);
+          const startX = hubRect.left + R * cos;
+          const startY = hubRect.top + R * sin;
+          const endX = hubRect.left + (R + w) * cos;
+          const endY = hubRect.top + (R + w) * sin;
+          const outOfView =
+            startX < SAFE_MARGIN || endX < SAFE_MARGIN ||
+            startX > vw - SAFE_MARGIN || endX > vw - SAFE_MARGIN ||
+            startY < SAFE_TOP || endY < SAFE_TOP ||
+            startY > vh - SAFE_MARGIN || endY > vh - SAFE_MARGIN;
+          if (outOfView) { layer.removeChild(item); break; }
+
+          /* 射线：从基准半径引至文字起点 */
           const rayFrom = Math.min(st.rayBase, R - 16);
           const ray = document.createElement('i');
           ray.className = 'px-fan-ray';
@@ -386,7 +387,7 @@
           dot.style.left = rayFrom + 'px';
           item.appendChild(dot);
           if (it.links) {
-            /* 子分组：二级沿本词条射线继续向外、向下级联展开（一级同时压暗） */
+            /* 子分组：二级沿本词条射线继续向外级联（一级同时压暗） */
             const openL2 = () => {
               clearTimeout(hideT);
               fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
@@ -396,7 +397,7 @@
                 entries: it.links,
                 a0: a + 7.5, stepA: 7,
                 r0: R + w + 44, dr: 22,
-                rayBase: R + w + 16, rMin: r2Now() + 40,
+                rayBase: R + w + 16,
                 off: 0,
               };
               drawFan(fan2, fan2State, false);
@@ -423,28 +424,29 @@
             });
           }
           el.addEventListener('mouseleave', scheduleHide);
-        });
-        /* 窗口范围指示（▲/▼ 实心 = 该方向可滚）：占用扇形末端下一条射线位 */
-        if (overflow) {
-          const end = Math.min(st.off + WIN, st.entries.length);
+          rendered++;
+        }
+        st.visibleCount = rendered;
+
+        /* 隐形滚轮的可视化提示（可上/可下）：小巧地放在最后一条词条外端之后 */
+        const canUp = st.off > 0;
+        const canDown = st.off + rendered < st.entries.length;
+        if ((canUp || canDown) && rendered > 0) {
+          const lastItem = layer.querySelectorAll('.px-fan-item')[rendered - 1];
+          const lastTxt = lastItem.querySelector('.px-fan-txt');
+          const lastLeft = parseFloat(lastTxt.style.left) || 0;
+          const lastW = lastTxt.offsetWidth;
           const item = document.createElement('div');
           item.className = 'px-fan-item';
-          const ra = st.a0 + vis.length * stepA;
-          item.style.setProperty('--a', ra.toFixed(2) + 'deg');
+          item.style.setProperty('--a', lastItem.style.getPropertyValue('--a'));
           const rg = document.createElement('i');
           rg.className = 'px-fan-range';
-          rg.textContent = (st.off > 0 ? '▲ ' : '△ ')
-            + (st.off + 1) + '–' + end + '/' + st.entries.length
-            + (end < st.entries.length ? ' ▼' : ' ▽');
+          rg.style.left = (lastLeft + lastW + 14) + 'px';
+          rg.textContent = (canUp ? '▲ ' : '△ ')
+            + (st.off + 1) + '–' + (st.off + rendered) + '/' + st.entries.length
+            + (canDown ? ' ▼' : ' ▽');
           item.appendChild(rg);
           layer.appendChild(item);
-          /* 指示条同样按视口钳制半径（必要时退到环内），保证始终可见 */
-          const rw = rg.offsetWidth;
-          const rrad = ra * Math.PI / 180;
-          let RR = st.rayBase + 10;
-          if (Math.cos(rrad) > 0.05) RR = Math.min(RR, (vw - hubRect.left - 20) / Math.cos(rrad) - rw);
-          if (Math.sin(rrad) > 0.05) RR = Math.min(RR, (vh - hubRect.top - 20) / Math.sin(rrad) - rw);
-          rg.style.left = Math.max(RR, 120) + 'px';
         }
       }
       /* 选中一级分组：无旋转、无闪烁——仅切换 .act 触发 CSS 伸长，扇形直接从条外端展开 */
@@ -496,15 +498,17 @@
       orb.addEventListener('mouseenter', () => clearTimeout(hideT));
       orb.addEventListener('mouseleave', scheduleHide);
 
-      /* 扇形超窗滚轮滑动：二级扇形展开时优先滚二级，否则滚一级；不超载则不拦截页面滚动 */
+      /* 隐形滚轮：只要当前扇形有隐藏的条（视口装不下 or 已滚了一部分），
+         滚轮就移动窗口；二级扇形展开时优先滚二级；不可滚则不拦截页面滚动 */
+      const canScroll = st => st && (st.off > 0 || (st.visibleCount || 0) < st.entries.length);
       document.addEventListener('wheel', e => {
         if (document.body.classList.contains('px-shut')) return;
         let st = null, layer = null;
-        if (fan2State && fan2State.entries.length > WIN) { st = fan2State; layer = fan2; }
-        else if (!fan2State && fan1State && fan1State.entries.length > WIN) { st = fan1State; layer = fan1; }
+        if (fan2State && canScroll(fan2State)) { st = fan2State; layer = fan2; }
+        else if (!fan2State && canScroll(fan1State)) { st = fan1State; layer = fan1; }
         if (!st) return;
         e.preventDefault();
-        const maxOff = st.entries.length - WIN;
+        const maxOff = Math.max(0, st.entries.length - (st.visibleCount || 1));
         const no = Math.max(0, Math.min(maxOff, st.off + (e.deltaY > 0 ? 1 : -1)));
         if (no === st.off) return;
         st.off = no;
