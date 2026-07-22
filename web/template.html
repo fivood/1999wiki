@@ -510,10 +510,11 @@
           dot.style.left = rayFrom + 'px';
           item.appendChild(dot);
           if (it.links) {
-            /* 子分组：L3 = 多列 1/4 弧——一列填满 arc 后向"外"（更大半径）开新列继续展开；
-               打开 L3 时同时把 L1 白条压暗、L2 保持 dim，避免视觉冲突 */
-            const L3_ARC_START = -20, L3_ARC_SPAN = 62;
-            const L3_SLOTS = 10;           /* 每列 10 条（arc 内均匀分布） */
+            /* 子分组：L3 = 多列 1/4 弧——**从父 L2 词条位置向下 + 向外展开**：
+               列 0 首条在父词条尾端沿父角度，后续沿弧向下；列满则向"外"（更大半径）
+               开新列，仍从父角度起始。这样 L3 视觉上从父词条位置扩展开 */
+            const L3_STEP_A = 6.8;         /* 单列内角度步长（度） */
+            const L3_SLOTS = 10;           /* 每列 10 条 */
             const L3_COL_STEP = 130;       /* 列间半径步长（含最长文字宽度余量） */
             const openL2 = () => {
               clearTimeout(hideT);
@@ -521,15 +522,14 @@
               el.classList.add('open');
               fan1.classList.add('dim');
               orb.classList.add('l3-open');
-              const r2 = r2Now();
               fan2State = {
                 entries: it.links,
-                a0: L3_ARC_START + dragRot,
-                stepA: (L3_ARC_SPAN - 2) / (L3_SLOTS - 1),
-                r0: Math.round(r2 * 1.30),
+                a0: a,                       /* 从父 L2 词条角度起 */
+                stepA: L3_STEP_A,
+                r0: R + w + 26,              /* 从父词条尾端外一点起，紧贴父项 */
                 dr: L3_COL_STEP,
                 slots: L3_SLOTS,
-                rayBase: r2 + 20,
+                rayBase: R + w + 10,
                 off: 0,
               };
               drawFan(fan2, fan2State, false);
