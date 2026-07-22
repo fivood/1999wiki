@@ -323,6 +323,7 @@
 
       function closeFans() {
         fan1.innerHTML = ''; fan2.innerHTML = '';
+        fan1.classList.remove('dim');
         fan1State = null; fan2State = null;
       }
       function collapseOrb() {
@@ -341,73 +342,77 @@
         setTimeout(() => { location.href = h; }, reduceMotion ? 0 : 500);
       }
 
-      /* 扇形文字菜单：从顶点 (st.ax, st.ay) 展开，纯文字词条随序号逐层外移到更大半径；
-         超过 WIN 条时只显示一个窗口（st.off 为窗口起点），用滚轮滑动浏览 */
+      /* ── 径向扇形菜单（对应草图：每条词条 = 沿半径方向倾斜书写的文字射线，
+         线条即文字，逐条角度加深、半径增大）；超过 WIN 条开窗，滚轮滑动 ── */
+      const BAR_AT = -14;   /* 吸附后一级白条角度：几乎水平、略抬起 */
+      const r2Now = () => ring2El.offsetWidth / 2;
       function drawFan(layer, st, instant) {
         layer.innerHTML = '';
         layer.classList.toggle('instant', !!instant);
-        /* 每排 8 条、单排角度 8°..64°（不近垂直）；窗口内条目沿半径外移 */
-        const stp = 8;
-        const perRow = 8;
-        /* 顶点到菜单条的虚线引线（沿竖直方向指向菜单条） */
-        if (st.lead > 0) {
-          const ld = document.createElement('i');
-          ld.className = 'px-fan-lead';
-          ld.style.left = st.ax + 'px';
-          ld.style.top = (st.dirY > 0 ? st.ay - st.lead : st.ay) + 'px';
-          ld.style.height = st.lead + 'px';
-          layer.appendChild(ld);
-        }
-        const ch = document.createElement('i');
-        ch.className = 'px-fan-apex';
-        ch.style.left = st.ax + 'px';
-        ch.style.top = st.ay + 'px';
-        layer.appendChild(ch);
-
+        const hubRect = orb.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
         const overflow = st.entries.length > WIN;
         const vis = overflow ? st.entries.slice(st.off, st.off + WIN) : st.entries;
+        /* 自适应角度步长：末条（最大半径+估算文字长）不越出视口下缘时才用满步长，
+           视口偏矮则压缩张角，保证半径级联完整、逐层单调变大 */
+        let stepA = st.stepA;
+        if (vis.length > 1) {
+          const outerR = st.r0 + (vis.length - 1) * st.dr + 120;
+          const fitSin = (vh - hubRect.top - 40) / outerR;
+          if (fitSin < 1) {
+            const maxA = Math.asin(Math.max(0.1, fitSin)) * 180 / Math.PI;
+            if (st.a0 + (vis.length - 1) * stepA > maxA) {
+              stepA = Math.max(4.5, (maxA - st.a0) / (vis.length - 1));
+            }
+          }
+        }
         vis.forEach((it, k) => {
-          const spread = 8 + (k % perRow) * stp;
-          const a = st.dirX > 0 ? st.dirY * spread : 180 - st.dirY * spread;
-          const r0 = 44 + k * 26 * st.scale;
+          const a = st.a0 + k * stepA;
           const rad = a * Math.PI / 180;
-          /* 标签侧按锚点屏幕位置单独决定：默认与扇形同侧朝圆心，伸出屏外则翻转 */
-          const anchorX = orb.getBoundingClientRect().left + st.ax + r0 * Math.cos(rad);
-          let flip = st.dirX < 0;
-          if (!flip && anchorX < 150) flip = true;
-          else if (flip && anchorX + 150 > window.innerWidth) flip = false;
           const item = document.createElement('div');
-          item.className = 'px-fan-item';
-          item.style.left = st.ax + 'px';
-          item.style.top = st.ay + 'px';
-          item.style.setProperty('--a', a.toFixed(1) + 'deg');
-          item.style.setProperty('--d', (k * 26) + 'ms');
-          if (flip) item.classList.add('flip');   /* 标签翻转到另一侧（避免伸出屏外） */
-          /* 锚点小方点（参考图的射线只是词条占位，菜单只保留文字） */
-          const dot = document.createElement('i');
-          dot.className = 'px-fan-dot';
-          dot.style.left = r0 + 'px';
-          item.appendChild(dot);
+          /* 深角度（>95°）整字翻转，保持文字不倒置 */
+          item.className = 'px-fan-item' + (a > 95 ? ' flip' : '');
+          item.style.setProperty('--a', a.toFixed(2) + 'deg');
+          item.style.setProperty('--d', (k * 36) + 'ms');
           const el = document.createElement(it.h ? 'a' : 'span');
           el.className = 'px-fan-txt' + (it.sub ? ' sub' : '') + (it.cur ? ' cur' : '');
-          el.style.left = r0 + 'px';
           el.textContent = it.t;
           if (it.h) el.href = it.h;
           else el.tabIndex = 0;
           item.appendChild(el);
+          layer.appendChild(item);
+          /* 先量文字宽，再按视口钳制半径（词条不出屏），下限保持在环外 */
+          const w = el.offsetWidth;
+          let R = st.r0 + k * st.dr;
+          const cos = Math.cos(rad), sin = Math.sin(rad);
+          if (cos > 0.05) R = Math.min(R, (vw - hubRect.left - 26) / cos - w);
+          if (sin > 0.05) R = Math.min(R, (vh - hubRect.top - 40) / sin - w);
+          R = Math.max(R, st.rMin);
+          el.style.left = R + 'px';
+          /* 射线：从基准半径引至文字起点，逐层拉长（草图中的「线条」本体） */
+          const rayFrom = Math.min(st.rayBase, R - 16);
+          const ray = document.createElement('i');
+          ray.className = 'px-fan-ray';
+          ray.style.left = rayFrom + 'px';
+          ray.style.width = Math.max(0, R - 8 - rayFrom) + 'px';
+          item.appendChild(ray);
+          const dot = document.createElement('i');
+          dot.className = 'px-fan-dot';
+          dot.style.left = rayFrom + 'px';
+          item.appendChild(dot);
           if (it.links) {
+            /* 子分组：二级沿本词条射线继续向外、向下级联展开（一级同时压暗） */
             const openL2 = () => {
               clearTimeout(hideT);
               fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
               el.classList.add('open');
-              const rad = a * Math.PI / 180;
-              /* 二级扇形反向（-dirY）张开：词条落入菜单条与一级扇形之间的空白角域，
-                 避免与一级词条重叠 */
+              fan1.classList.add('dim');
               fan2State = {
                 entries: it.links,
-                ax: st.ax + r0 * Math.cos(rad),
-                ay: st.ay + r0 * Math.sin(rad) - st.dirY * 22,
-                scale: 0.62, dirX: st.dirX, dirY: -st.dirY, lead: 22, off: 0,
+                a0: a + 7.5, stepA: 7,
+                r0: R + w + 44, dr: 22,
+                rayBase: R + w + 16, rMin: r2Now() + 40,
+                off: 0,
               };
               drawFan(fan2, fan2State, false);
             };
@@ -419,8 +424,11 @@
           } else {
             el.addEventListener('mouseenter', () => {
               clearTimeout(hideT);
-              fan2.innerHTML = ''; fan2State = null;
-              fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
+              if (layer === fan1) {
+                fan2.innerHTML = ''; fan2State = null;
+                fan1.classList.remove('dim');
+                fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
+              }
             });
             /* 点中词条：菜单收缩成小骰（挤压动画）后跳转 */
             el.addEventListener('click', e => {
@@ -430,30 +438,38 @@
             });
           }
           el.addEventListener('mouseleave', scheduleHide);
-          layer.appendChild(item);
         });
-        /* 窗口范围指示（▲/▼ 实心 = 该方向可滚）：置于扇形最末排之外，避免压住词条 */
+        /* 窗口范围指示（▲/▼ 实心 = 该方向可滚）：占用扇形末端下一条射线位 */
         if (overflow) {
           const end = Math.min(st.off + WIN, st.entries.length);
-          const lastR = 44 + (vis.length - 1) * 26 * st.scale;
+          const item = document.createElement('div');
+          item.className = 'px-fan-item';
+          const ra = st.a0 + vis.length * stepA;
+          item.style.setProperty('--a', ra.toFixed(2) + 'deg');
           const rg = document.createElement('i');
           rg.className = 'px-fan-range';
-          rg.style.left = st.ax + 'px';
-          rg.style.top = (st.ay + st.dirY * (lastR * 0.9 + 24)) + 'px';
           rg.textContent = (st.off > 0 ? '▲ ' : '△ ')
             + (st.off + 1) + '–' + end + '/' + st.entries.length
             + (end < st.entries.length ? ' ▼' : ' ▽');
-          layer.appendChild(rg);
+          item.appendChild(rg);
+          layer.appendChild(item);
+          /* 指示条同样按视口钳制半径（必要时退到环内），保证始终可见 */
+          const rw = rg.offsetWidth;
+          const rrad = ra * Math.PI / 180;
+          let RR = st.rayBase + 10;
+          if (Math.cos(rrad) > 0.05) RR = Math.min(RR, (vw - hubRect.left - 20) / Math.cos(rrad) - rw);
+          if (Math.sin(rrad) > 0.05) RR = Math.min(RR, (vh - hubRect.top - 20) / Math.sin(rrad) - rw);
+          rg.style.left = Math.max(RR, 120) + 'px';
         }
       }
-      /* 选中一级分组：圆环快速旋转吸附到该条水平（几乎平行浏览器），到位后再展开扇形 */
+      /* 选中一级分组：圆环快速旋转吸附到该条几乎水平（略抬起），到位后再展开扇形 */
       function showGroup(i) {
         clearTimeout(hideT);
         paused = true;
         closeFans();
         orb.querySelectorAll('.px-orb-bar').forEach(b => b.classList.toggle('act', +b.dataset.i === i));
         if (!groups[i].items.length) return;
-        const target = -i * step;
+        const target = BAR_AT - i * step;
         const delta = ((target - rot) % 360 + 540) % 360 - 180;
         if (reduceMotion || Math.abs(delta) < 0.5) {
           rot = target;
@@ -462,15 +478,21 @@
           snap = { from: rot, delta, t0: performance.now(), after: () => openGroup(i) };
         }
       }
-      /* 扇形固定从水平位（环右侧 0° 处）向右下展开 */
+      /* 到位后从白条下方开扇：词条沿半径倾斜排布，角度渐深、半径渐大 */
       function openGroup(i) {
         const g = groups[i];
         const entries = g.items.map(it => it.sub
           ? { t: it.sub, sub: true, links: it.links }
           : it);
         if (!entries.length) return;
-        const r2 = ring2El.offsetWidth / 2;
-        fan1State = { entries, ax: r2, ay: 38, scale: 1, dirX: 1, dirY: 1, lead: 38, off: 0 };
+        const r2 = r2Now();
+        fan1State = {
+          entries,
+          a0: BAR_AT + 11, stepA: 8,
+          r0: r2 + 40, dr: 26,
+          rayBase: r2 + 12, rMin: r2 + 26,
+          off: 0,
+        };
         drawFan(fan1, fan1State, false);
       }
       function scheduleHide() {
@@ -506,7 +528,10 @@
         const no = Math.max(0, Math.min(maxOff, st.off + (e.deltaY > 0 ? 1 : -1)));
         if (no === st.off) return;
         st.off = no;
-        if (layer === fan1) { fan2.innerHTML = ''; fan2State = null; }
+        if (layer === fan1) {
+          fan2.innerHTML = ''; fan2State = null;
+          fan1.classList.remove('dim');
+        }
         drawFan(layer, st, true);
       }, { passive: false });
 

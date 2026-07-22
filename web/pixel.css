@@ -1372,10 +1372,10 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   background: #ededed;
   color: #000;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 2.5px;
-  padding: 5px 11px;
+  letter-spacing: 3px;
+  padding: 6px 12px;
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
@@ -1397,67 +1397,71 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 .px-orb-bar.cur:hover,
 .px-orb-bar.cur.act { background: #000; color: var(--gold); outline: 1px solid var(--gold); }
 
-/* ── 扇形射线二级菜单（从激活条下方顶点向右下展开，临时浮于内容之上） ── */
+/* ── 径向扇形菜单：词条 = 沿半径方向倾斜书写的文字射线（草图中的「线条」即文字），
+   逐条角度加深、半径增大；二级沿父词条射线继续向外级联展开 ── */
 .px-fan-layer { position: absolute; left: 0; top: 0; z-index: 7; pointer-events: none; }
-/* 顶点到菜单条的虚线引线 */
-.px-fan-lead {
-  position: absolute;
-  border-left: 1px dashed #555;
-  pointer-events: none;
-}
-/* 顶点十字星 */
-.px-fan-apex {
-  position: absolute;
-  width: 11px;
-  height: 11px;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.px-fan-apex::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid #666; }
-.px-fan-apex::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid #666; }
+/* 二级展开时一级压暗（仍可悬停切换） */
+.px-fan-layer.dim .px-fan-txt:not(.open),
+.px-fan-layer.dim .px-fan-ray,
+.px-fan-layer.dim .px-fan-dot { opacity: .3; }
 
+/* 每条词条 = 一个绕圆心旋转 --a 的射线容器，子元素按半径定位 */
 .px-fan-item {
   position: absolute;
+  left: 0;
+  top: 0;
   transform: rotate(var(--a));
   transform-origin: 0 0;
 }
-/* 锚点小方点：词条所在位置（参考图的射线只是占位，菜单只留文字） */
+/* 射线：环缘引至文字起点（逐层拉长），展开时从内向外生长 */
+.px-fan-ray {
+  position: absolute;
+  top: 0;
+  height: 0;
+  border-top: 1px solid #575757;
+  transform-origin: 0 0;
+  animation: px-ray-grow .32s ease-out both;
+  animation-delay: var(--d);
+  transition: opacity .18s ease;
+}
+@keyframes px-ray-grow { from { transform: scaleX(0); } }
+/* 射线起点小方点（贴环） */
 .px-fan-dot {
   position: absolute;
   top: 0;
   width: 5px;
   height: 5px;
-  background: #d8d8d8;
+  background: #cfcfcf;
   transform: translate(-50%, -50%);
-  animation: px-fan-fade .22s ease-out both;
+  animation: px-fan-fade .2s ease-out both;
   animation-delay: var(--d);
+  transition: opacity .18s ease;
 }
-/* 标签：水平可读，右端对齐射线起点；悬停/展开变金黄 */
+/* 词条文字：沿射线方向倾斜书写（不回正），随射线生长淡入；悬停/展开变金黄 */
 .px-fan-txt {
   position: absolute;
   top: 0;
-  transform: rotate(calc(var(--a) * -1)) translate(-100%, -100%) translate(-8px, -6px);
-  transform-origin: 0 0;
+  transform: translateY(-52%);
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 1.5px;
+  font-size: 13.5px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
   color: #e8e8e8;
   white-space: nowrap;
   text-decoration: none;
   cursor: pointer;
   pointer-events: auto;
+  padding: 4px 6px;
   text-shadow: 0 0 6px #000, 0 0 3px #000;
-  animation: px-fan-fade .22s ease-out both;
-  animation-delay: calc(var(--d) + 80ms);
+  animation: px-fan-fade .26s ease-out both;
+  animation-delay: calc(var(--d) + 90ms);
+  transition: opacity .18s ease, color .12s ease;
 }
+/* 深角度（>95°）词条整字翻转 180°，保持文字不倒置 */
+.px-fan-item.flip .px-fan-txt { transform: translateY(-52%) rotate(180deg); }
 .px-fan-txt:hover,
 .px-fan-txt.open { color: var(--gold); }
 .px-fan-item:hover .px-fan-dot { background: var(--gold); }
-/* 左向扇形：标签翻转到射线右侧（始终朝圆心一侧，避免伸出屏外） */
-.px-fan-item.flip .px-fan-txt {
-  transform: rotate(calc(var(--a) * -1)) translate(8px, -100%) translateY(-6px);
-}
-.px-fan-txt.sub { font-weight: 700; }
 .px-fan-txt.sub::after { content: ' ▸'; color: #888; }
 .px-fan-txt.sub:hover::after,
 .px-fan-txt.sub.open::after { color: var(--gold); }
@@ -1590,7 +1594,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 .px-die-cap { transition: opacity .3s ease; }
 
 /* 首页几何：圆环居左中、占满整页（正文板块在像素版桌面端不渲染） */
-body.px-home { --hubX: clamp(230px, 32vw, 540px); --hubY: 48vh; --dieD: clamp(140px, 14.5vw, 235px); }
+body.px-home { --hubX: clamp(230px, 30vw, 520px); --hubY: 42vh; --dieD: clamp(140px, 14.5vw, 235px); }
 
 /* 收缩态几何（置于 px-home 之后，确保首页点词条收缩时也生效） */
 body.px-shut { --hubX: 64px; --hubY: 80px; --dieD: 54px; }
@@ -1615,10 +1619,11 @@ body.px-shut .px-die .px-die-3d { animation: px-die-idle 8s linear infinite; }
   body.px-enter .content { transform: translateX(64px); opacity: 0; }
 }
 
-/* 扇形窗口范围指示（▲/▼ 实心 = 该方向可滚） */
+/* 扇形窗口范围指示（▲/▼ 实心 = 该方向可滚）：沿末端射线位倾斜书写 */
 .px-fan-range {
   position: absolute;
-  transform: translate(-50%, -50%);
+  top: 0;
+  transform: translateY(-50%);
   font-family: var(--font-mono);
   font-size: 10px;
   letter-spacing: 1.5px;
@@ -1627,7 +1632,8 @@ body.px-shut .px-die .px-die-3d { animation: px-die-idle 8s linear infinite; }
   pointer-events: none;
   animation: px-fan-fade .3s .25s both;
 }
-/* 滚轮重绘：即时定位，不重播淡入 */
+/* 滚轮重绘：即时定位，不重播生长/淡入 */
+.px-fan-layer.instant .px-fan-ray,
 .px-fan-layer.instant .px-fan-dot,
 .px-fan-layer.instant .px-fan-txt,
 .px-fan-layer.instant .px-fan-range { animation: none !important; }
