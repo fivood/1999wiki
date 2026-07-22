@@ -233,8 +233,11 @@
       });
       if (!groups.length) return;
 
-      /* ── 组装圆环 DOM（草图格局：骰子居环心，同心圆环，L1 白底条贴环，L2 扇形文字） ── */
-      const step = 360 / groups.length;
+      /* ── 组装圆环 DOM：一级白条只分布在右上 1/4 弧（约 90° 内），
+         每条长轴径向指向圆心；不再自转，用 CSS 伸长表达"选中" ── */
+      const ARC_START = -32, ARC_SPAN = 88;
+      const step = groups.length > 1 ? ARC_SPAN / (groups.length - 1) : 0;
+      const barAngle = i => ARC_START + i * step;
       let html = '<div class="px-orb-rings">'
         + '<div class="px-orb-cross"></div>'
         + '<div class="px-orb-ring r1"></div>'
@@ -243,7 +246,7 @@
         + '<div class="px-orb-ticks"></div>'
         + '<div class="px-orb-bars" id="pxOrbBars">';
       groups.forEach((g, i) => {
-        html += `<span class="px-orb-bar${g.cur ? ' cur' : ''}" data-i="${i}" tabindex="0" role="button" style="--a:${(i * step).toFixed(1)}deg;--i:${i}"><i>${String(i + 1).padStart(2, '0')}</i>${esc(g.title)}</span>`;
+        html += `<span class="px-orb-bar${g.cur ? ' cur' : ''}" data-i="${i}" tabindex="0" role="button" style="--a:${barAngle(i).toFixed(2)}deg;--i:${i}"><i>${String(i + 1).padStart(2, '0')}</i>${esc(g.title)}</span>`;
       });
       html += '</div></div>';
 
@@ -287,34 +290,16 @@
       html += '<div class="px-fan-layer" id="pxFan1"></div><div class="px-fan-layer" id="pxFan2"></div>';
       orb.innerHTML = html;
 
-      /* ── 菜单交互：JS 驱动慢速自转；选中分组先快速吸附到水平角，再展开扇形；
-         点词条后菜单收缩成无数字旋转小骰，正文挤占回页面 ── */
-      const barsLayer = orb.querySelector('#pxOrbBars');
+      /* ── 菜单交互：一级白条静止分布在右上 1/4 弧；选中时该条 CSS 伸长（padding-right 过渡），
+         扇形从其外端继续径向展开，两级都指向骰子；点词条后菜单收缩成小骰 ── */
       const ring2El = orb.querySelector('.px-orb-ring.r2');
       const fan1 = orb.querySelector('#pxFan1');
       const fan2 = orb.querySelector('#pxFan2');
       const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      const AUTO_DPS = 360 / 110000;     /* 自转速度：110s 一周 */
-      const SNAP_MS = 380;               /* 吸附旋转时长 */
       const WIN = 8;                     /* 扇形窗口条数：超出用滚轮滑动 */
       const isHome = document.body.classList.contains('px-home');
-      let rot = 0, paused = false, hideT = null, snap = null;
+      let hideT = null;
       let fan1State = null, fan2State = null;
-
-      let lastT = performance.now();
-      (function tickFrame(now) {
-        const dt = Math.min(80, now - lastT); lastT = now;
-        if (snap) {
-          const t = Math.min(1, (now - snap.t0) / SNAP_MS);
-          const e = 1 - Math.pow(1 - t, 3);
-          rot = snap.from + snap.delta * e;
-          if (t >= 1) { const cb = snap.after; snap = null; if (cb) cb(); }
-        } else if (!paused && !reduceMotion) {
-          rot += dt * AUTO_DPS;
-        }
-        barsLayer.style.transform = 'rotate(' + rot.toFixed(2) + 'deg)';
-        requestAnimationFrame(tickFrame);
-      })(lastT);
 
       /* 正文进场：内容页带 px-enter 载入，首绘后移除以触发挤压展开动画 */
       if (document.body.classList.contains('px-enter')) {
@@ -327,13 +312,12 @@
         fan1State = null; fan2State = null;
       }
       function collapseOrb() {
-        closeFans(); snap = null; paused = true;
+        closeFans();
         document.body.classList.add('px-shut');
         orb.querySelectorAll('.px-orb-bar.act').forEach(b => b.classList.remove('act'));
       }
       function expandOrb() {
         document.body.classList.remove('px-shut');
-        paused = false;
       }
       /* 词条跳转：先收缩菜单（可见挤压动画），再导航 */
       function goHref(h) {
@@ -342,10 +326,11 @@
         setTimeout(() => { location.href = h; }, reduceMotion ? 0 : 500);
       }
 
-      /* ── 径向扇形菜单（对应草图：每条词条 = 沿半径方向倾斜书写的文字射线，
-         线条即文字，逐条角度加深、半径增大）；超过 WIN 条开窗，滚轮滑动 ── */
-      const BAR_AT = -14;   /* 吸附后一级白条角度：几乎水平、略抬起 */
+      /* ── 径向扇形菜单：每条词条 = 沿所在半径方向书写的文字射线（径向指向骰子），
+         从被选中的一级白条外端继续向外级联展开；超过 WIN 条开窗，滚轮滑动 ── */
       const r2Now = () => ring2El.offsetWidth / 2;
+      /* 一级白条伸长后的外端半径（与 CSS .px-orb-bar.act 的 padding 增量对应） */
+      const BAR_EXT = 68;
       function drawFan(layer, st, instant) {
         layer.innerHTML = '';
         layer.classList.toggle('instant', !!instant);
@@ -462,35 +447,31 @@
           rg.style.left = Math.max(RR, 120) + 'px';
         }
       }
-      /* 选中一级分组：圆环快速旋转吸附到该条几乎水平（略抬起），到位后再展开扇形 */
+      /* 选中一级分组：无旋转、无闪烁——仅切换 .act 触发 CSS 伸长，扇形直接从条外端展开 */
       function showGroup(i) {
         clearTimeout(hideT);
-        paused = true;
         closeFans();
         orb.querySelectorAll('.px-orb-bar').forEach(b => b.classList.toggle('act', +b.dataset.i === i));
         if (!groups[i].items.length) return;
-        const target = BAR_AT - i * step;
-        const delta = ((target - rot) % 360 + 540) % 360 - 180;
-        if (reduceMotion || Math.abs(delta) < 0.5) {
-          rot = target;
-          openGroup(i);
-        } else {
-          snap = { from: rot, delta, t0: performance.now(), after: () => openGroup(i) };
-        }
+        openGroup(i);
       }
-      /* 到位后从白条下方开扇：词条沿半径倾斜排布，角度渐深、半径渐大 */
+      /* 从被选中白条外端向外径向展开：词条按其半径角度书写（指向骰子），角度稍散、半径逐层加大 */
       function openGroup(i) {
         const g = groups[i];
         const entries = g.items.map(it => it.sub
           ? { t: it.sub, sub: true, links: it.links }
           : it);
         if (!entries.length) return;
+        const bar = orb.querySelector('.px-orb-bar[data-i="' + i + '"]');
+        const barA = +bar.style.getPropertyValue('--a').replace('deg', '') || 0;
         const r2 = r2Now();
+        /* 白条实际外端半径 = r2 + 条宽 + 伸长量（条宽 = 未伸长的 offsetWidth） */
+        const barOuterR = r2 + bar.offsetWidth + BAR_EXT;
         fan1State = {
           entries,
-          a0: BAR_AT + 11, stepA: 8,
-          r0: r2 + 40, dr: 26,
-          rayBase: r2 + 12, rMin: r2 + 26,
+          a0: barA + 6, stepA: 6.5,
+          r0: barOuterR + 30, dr: 26,
+          rayBase: barOuterR + 4, rMin: barOuterR + 20,
           off: 0,
         };
         drawFan(fan1, fan1State, false);
@@ -498,8 +479,7 @@
       function scheduleHide() {
         clearTimeout(hideT);
         hideT = setTimeout(() => {
-          closeFans(); snap = null;
-          if (!document.body.classList.contains('px-shut')) paused = false;
+          closeFans();
           orb.querySelectorAll('.px-orb-bar.act').forEach(b => b.classList.remove('act'));
         }, 450);
       }

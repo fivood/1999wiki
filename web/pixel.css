@@ -31,9 +31,10 @@
   --font-disp: 'VT323', 'Space Mono', 'Noto Sans SC', monospace;
   --font-mono: 'Space Mono', 'Noto Sans SC', monospace;
   --dots: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.4px);
-  /* 圆环菜单几何：hub = 圆心（骰子所在），r1/r2/r3 = 三环半径，r2 为菜单环 */
-  --hubX: clamp(115px, 15vw, 250px);
-  --hubY: clamp(120px, 24vh, 220px);
+  /* 圆环菜单几何：hub = 圆心（骰子所在），r1/r2/r3 = 三环半径，r2 为菜单环
+     内页展开态默认：hubY 下移至视口中带以承接 -32°..+56° 的 1/4 弧 */
+  --hubX: clamp(120px, 15vw, 240px);
+  --hubY: clamp(210px, 42vh, 360px);
   --dieD: clamp(110px, 11vw, 180px);
   --gold: #f3c74f;
 }
@@ -1361,26 +1362,31 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   animation: px-ring-in 1s .3s both;
 }
 
-/* L1 白底条：径向贴在 r2 环上（长轴沿半径，左边缘中心指向圆心）；JS 驱动整层自转 */
+/* L1 白底条：只分布在右上 1/4 弧（-50°..+40°），长轴径向指向骰子；
+   锚点取「内左边缘中心」= r2 点，选中时 padding-right 平滑扩张 → 条向外伸长 */
 .px-orb-bars { position: absolute; left: 0; top: 0; z-index: 6; }
 .px-orb-bar {
   position: absolute;
   left: 0;
   top: 0;
-  transform: rotate(var(--a)) translate(var(--r2)) translate(-50%, -50%);
-  transform-origin: 0 0;   /* 必须原点变换：绕自身中心旋转会让中心偏离环点 */
+  /* 从 r2 点起，左边缘中心贴环，向外径向延伸 */
+  transform: rotate(var(--a)) translate(var(--r2)) translate(0, -50%);
+  transform-origin: 0 0;
   background: #ededed;
   color: #000;
   font-family: var(--font-mono);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 3px;
-  padding: 6px 12px;
+  padding: 6px 14px 6px 12px;
   white-space: nowrap;
   cursor: pointer;
   pointer-events: auto;
   box-shadow: 3px 3px 0 rgba(0,0,0,0.55);
-  transition: background .12s, color .12s;
+  /* padding-right 平滑扩张 = 白条向外伸长 */
+  transition: padding-right .35s cubic-bezier(.22,.9,.24,1),
+    background .18s ease, color .18s ease,
+    box-shadow .25s ease;
   animation: px-ring-in .5s both;
   animation-delay: calc(.25s + var(--i) * 60ms);
 }
@@ -1391,11 +1397,30 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   margin-right: 7px;
   letter-spacing: 0;
 }
-.px-orb-bar:hover,
-.px-orb-bar.act { background: #000; color: #fff; outline: 1px solid #fff; }
+.px-orb-bar:hover { background: #000; color: #fff; outline: 1px solid #fff; }
 .px-orb-bar.cur { background: var(--gold); }
 .px-orb-bar.cur:hover,
 .px-orb-bar.cur.act { background: #000; color: var(--gold); outline: 1px solid var(--gold); }
+/* 选中：变黑 + padding-right 扩张伸长 + 尾部箭头指示外延方向 */
+.px-orb-bar.act {
+  background: #000;
+  color: #fff;
+  outline: 1px solid #fff;
+  padding-right: 82px;   /* 与 JS 里的 BAR_EXT 呼应 */
+  box-shadow: 5px 5px 0 rgba(255,255,255,0.16);
+  z-index: 8;
+}
+.px-orb-bar.act::after {
+  content: '▸';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--gold);
+  animation: px-blink 1.06s steps(1) infinite;
+}
+.px-orb-bar.cur.act::after { color: var(--gold); }
 
 /* ── 径向扇形菜单：词条 = 沿半径方向倾斜书写的文字射线（草图中的「线条」即文字），
    逐条角度加深、半径增大；二级沿父词条射线继续向外级联展开 ── */
@@ -1594,7 +1619,7 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 .px-die-cap { transition: opacity .3s ease; }
 
 /* 首页几何：圆环居左中、占满整页（正文板块在像素版桌面端不渲染） */
-body.px-home { --hubX: clamp(230px, 30vw, 520px); --hubY: 42vh; --dieD: clamp(140px, 14.5vw, 235px); }
+body.px-home { --hubX: clamp(210px, 26vw, 460px); --hubY: 46vh; --dieD: clamp(130px, 13vw, 210px); }
 
 /* 收缩态几何（置于 px-home 之后，确保首页点词条收缩时也生效） */
 body.px-shut { --hubX: 64px; --hubY: 80px; --dieD: 54px; }
