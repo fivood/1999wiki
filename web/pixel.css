@@ -1375,6 +1375,11 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   animation: px-ring-in 1s .3s both;
 }
 
+/* L3 打开时：L1 白条压暗到 15% 让位（悬停仍可切换分组）；L2 由 .dim 单独控制 */
+.px-orb.l3-open .px-orb-bar { opacity: 0.15; transition: opacity .28s ease; }
+.px-orb.l3-open .px-orb-bar.act { opacity: 0.42; }
+.px-orb.l3-open .px-orb-bar:hover { opacity: 0.7; }
+
 /* ── 装饰性同心圆轨道（呼吸+慢转），星轨小点在其上公转 ── */
 .px-orb-orbit-line {
   position: absolute;
