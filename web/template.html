@@ -524,15 +524,14 @@
               orb.classList.add('l3-open');
               fan2State = {
                 entries: it.links,
-                /* 从父 L2 词条下方一格起（父同角同径不占用，避免视觉挤占）；
-                   r0 = 父项自身半径 R——L3 col 1 与父同径，向外每列 +dr 继续展开，
-                   把整个 L3 网格塞进 L1 被压暗的环带内，横向留 5 列以上空间 */
-                a0: a + L3_STEP_A,
+                /* 计算点 = 父 L2 词条尾端右侧（R + w + 小间距）——L3 col 1 起始处
+                   紧贴父项右侧，视觉上从父词条"延伸"出去 */
+                a0: a,
                 stepA: L3_STEP_A,
-                r0: R,
+                r0: R + w + 8,
                 dr: L3_COL_STEP,
                 slots: L3_SLOTS,
-                rayBase: R - 30,
+                rayBase: R + w + 4,
                 off: 0,
               };
               drawFan(fan2, fan2State, false);
@@ -645,19 +644,33 @@
         let st = null, layer = null;
         if (fan2State && canScroll(fan2State)) { st = fan2State; layer = fan2; }
         else if (!fan2State && canScroll(fan1State)) { st = fan1State; layer = fan1; }
-        if (!st) return;
-        e.preventDefault();
-        clearTimeout(hideT);   /* 滚轮活跃即视为交互中，取消任何计划的关闭 */
-        const maxOff = Math.max(0, st.entries.length - (st.visibleCount || 1));
-        const no = Math.max(0, Math.min(maxOff, st.off + (e.deltaY > 0 ? 1 : -1)));
-        if (no === st.off) return;
-        st.off = no;
-        if (layer === fan1) {
-          fan2.innerHTML = ''; fan2State = null;
-          fan1.classList.remove('dim');
-          orb.classList.remove('l3-open');
+        if (st) {
+          /* 已有扇形需要翻窗：滚轮 = 翻扇形 */
+          e.preventDefault();
+          clearTimeout(hideT);
+          const maxOff = Math.max(0, st.entries.length - (st.visibleCount || 1));
+          const no = Math.max(0, Math.min(maxOff, st.off + (e.deltaY > 0 ? 1 : -1)));
+          if (no === st.off) return;
+          st.off = no;
+          if (layer === fan1) {
+            fan2.innerHTML = ''; fan2State = null;
+            fan1.classList.remove('dim');
+            orb.classList.remove('l3-open');
+          }
+          drawFan(layer, st, true);
+          return;
         }
-        drawFan(layer, st, true);
+        /* 否则：只要指针在 orb 区域内（含拖动 hit 区、bars、rings），滚轮就转 L1 轮盘，
+           把 剧情概要 之类落在底端的白条滚上来给扇形留空间 */
+        if (!e.target || !e.target.closest || !e.target.closest('#pxOrb')) return;
+        e.preventDefault();
+        cancelInertia();
+        clearTimeout(hideT);
+        const rotStep = 5;   /* 每次滚轮 = 5° 旋转 */
+        dragRot += (e.deltaY > 0) ? rotStep : -rotStep;
+        applyBarsRot();
+        /* 旋转会让当前扇形与白条脱离对齐，直接关掉；用户在新位置重新悬停即可 */
+        if (fan1State || fan2State) closeFans();
       }, { passive: false });
 
       /* 内容页：点菜单之外的背景（或按 Esc）把菜单收回小骰，正文挤占回页面 */
