@@ -31,6 +31,19 @@
   --font-disp: 'VT323', 'Space Mono', 'Noto Sans SC', monospace;
   --font-mono: 'Space Mono', 'Noto Sans SC', monospace;
   --dots: radial-gradient(rgba(255,255,255,0.055) 1px, transparent 1.4px);
+  /* 圆环菜单几何：hub = 圆心（骰子所在），r1/r2/r3 = 三环半径，r2 为菜单环 */
+  --hubX: clamp(115px, 15vw, 250px);
+  --hubY: clamp(120px, 24vh, 220px);
+  --dieD: clamp(110px, 11vw, 180px);
+  --gold: #f3c74f;
+}
+
+/* r1/r2/r3 必须在 body 上声明：var() 在自定义属性声明处代入，
+   若写在 :root 会固化 :root 的 --dieD，body.px-home/.px-shut 的几何覆盖将失效 */
+body {
+  --r1: calc(var(--dieD) * 1.5);
+  --r2: calc(var(--dieD) * 1.95);
+  --r3: calc(var(--dieD) * 2.35);
 }
 
 * { box-sizing: border-box; border-radius: 0 !important; }
@@ -1261,3 +1274,360 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   }
   .rv { opacity: 1 !important; transform: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   圆环菜单 + D20 今日报纸（像素版桌面端导航）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 桌面端：隐藏侧边栏，正文为圆环菜单区让位（菜单在左上，正文右移） */
+@media (min-width: 769px) {
+  .sidebar { display: none; }
+  .content {
+    margin-left: 0;
+    padding-left: calc(var(--hubX) + var(--r2) + 44px);
+  }
+  .px-coord { left: 16px; }
+}
+
+@keyframes px-orbit { to { transform: rotate(360deg); } }
+@keyframes px-ring-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes px-fan-fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* 容器：固定在左上，(0,0) 即圆心 hub（骰子所在）；默认不拦截指针 */
+.px-orb {
+  position: fixed;
+  left: var(--hubX);
+  top: var(--hubY);
+  width: 0;
+  height: 0;
+  z-index: 80;
+  display: none;
+  user-select: none;
+  pointer-events: none;
+}
+@media (min-width: 769px) {
+  .px-orb { display: block; }
+}
+
+/* 过圆心的十字虚线（工程图风味） */
+.px-orb-cross { position: absolute; left: 0; top: 0; animation: px-ring-in 1.2s both; }
+.px-orb-cross::before {
+  content: '';
+  position: absolute;
+  left: -70vw;
+  top: 0;
+  width: 140vw;
+  border-top: 1px dashed #1a1a1a;
+}
+.px-orb-cross::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -70vh;
+  height: 140vh;
+  border-left: 1px dashed #1a1a1a;
+}
+
+/* 同心圆环：r1 内环 / r2 菜单环 / r3 虚线外环（反向慢转） */
+.px-orb-ring {
+  position: absolute;
+  left: calc(var(--r) * -1);
+  top: calc(var(--r) * -1);
+  width: calc(var(--r) * 2);
+  height: calc(var(--r) * 2);
+  border-radius: 50% !important;   /* 覆盖全局 border-radius:0 重置，圆环必须是圆 */
+  pointer-events: none;
+}
+.px-orb-ring.r1 { --r: var(--r1); border: 1px solid #2b2b2b; animation: px-ring-in .8s .05s both; }
+.px-orb-ring.r2 { --r: var(--r2); border: 1px solid #3a3a3a; animation: px-ring-in .8s .15s both; }
+.px-orb-ring.r3 {
+  --r: var(--r3);
+  border: 1px dashed #222;
+  animation: px-ring-in .8s .25s both, px-orbit 160s linear infinite reverse;
+}
+
+/* r2 外侧刻度环（静态） */
+.px-orb-ticks {
+  position: absolute;
+  left: calc(var(--r2) * -1 - 12px);
+  top: calc(var(--r2) * -1 - 12px);
+  width: calc(var(--r2) * 2 + 24px);
+  height: calc(var(--r2) * 2 + 24px);
+  border-radius: 50% !important;   /* 覆盖全局 border-radius:0 重置 */
+  background: repeating-conic-gradient(rgba(255,255,255,0.22) 0deg 0.4deg, transparent 0.4deg 6deg);
+  -webkit-mask: radial-gradient(circle, transparent calc(var(--r2) - 1px), #000 var(--r2), #000 calc(var(--r2) + 9px), transparent calc(var(--r2) + 10px));
+  mask: radial-gradient(circle, transparent calc(var(--r2) - 1px), #000 var(--r2), #000 calc(var(--r2) + 9px), transparent calc(var(--r2) + 10px));
+  pointer-events: none;
+  animation: px-ring-in 1s .3s both;
+}
+
+/* L1 白底条：径向贴在 r2 环上（长轴沿半径，左边缘中心指向圆心）；JS 驱动整层自转 */
+.px-orb-bars { position: absolute; left: 0; top: 0; z-index: 6; }
+.px-orb-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: rotate(var(--a)) translate(var(--r2)) translate(-50%, -50%);
+  transform-origin: 0 0;   /* 必须原点变换：绕自身中心旋转会让中心偏离环点 */
+  background: #ededed;
+  color: #000;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  padding: 5px 11px;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.55);
+  transition: background .12s, color .12s;
+  animation: px-ring-in .5s both;
+  animation-delay: calc(.25s + var(--i) * 60ms);
+}
+.px-orb-bar i {
+  font-style: normal;
+  font-size: 9px;
+  opacity: .45;
+  margin-right: 7px;
+  letter-spacing: 0;
+}
+.px-orb-bar:hover,
+.px-orb-bar.act { background: #000; color: #fff; outline: 1px solid #fff; }
+.px-orb-bar.cur { background: var(--gold); }
+.px-orb-bar.cur:hover,
+.px-orb-bar.cur.act { background: #000; color: var(--gold); outline: 1px solid var(--gold); }
+
+/* ── 扇形射线二级菜单（从激活条下方顶点向右下展开，临时浮于内容之上） ── */
+.px-fan-layer { position: absolute; left: 0; top: 0; z-index: 7; pointer-events: none; }
+/* 顶点到菜单条的虚线引线 */
+.px-fan-lead {
+  position: absolute;
+  border-left: 1px dashed #555;
+  pointer-events: none;
+}
+/* 顶点十字星 */
+.px-fan-apex {
+  position: absolute;
+  width: 11px;
+  height: 11px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.px-fan-apex::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1px solid #666; }
+.px-fan-apex::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; border-top: 1px solid #666; }
+
+.px-fan-item {
+  position: absolute;
+  transform: rotate(var(--a));
+  transform-origin: 0 0;
+}
+/* 锚点小方点：词条所在位置（参考图的射线只是占位，菜单只留文字） */
+.px-fan-dot {
+  position: absolute;
+  top: 0;
+  width: 5px;
+  height: 5px;
+  background: #d8d8d8;
+  transform: translate(-50%, -50%);
+  animation: px-fan-fade .22s ease-out both;
+  animation-delay: var(--d);
+}
+/* 标签：水平可读，右端对齐射线起点；悬停/展开变金黄 */
+.px-fan-txt {
+  position: absolute;
+  top: 0;
+  transform: rotate(calc(var(--a) * -1)) translate(-100%, -100%) translate(-8px, -6px);
+  transform-origin: 0 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  color: #e8e8e8;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  pointer-events: auto;
+  text-shadow: 0 0 6px #000, 0 0 3px #000;
+  animation: px-fan-fade .22s ease-out both;
+  animation-delay: calc(var(--d) + 80ms);
+}
+.px-fan-txt:hover,
+.px-fan-txt.open { color: var(--gold); }
+.px-fan-item:hover .px-fan-dot { background: var(--gold); }
+/* 左向扇形：标签翻转到射线右侧（始终朝圆心一侧，避免伸出屏外） */
+.px-fan-item.flip .px-fan-txt {
+  transform: rotate(calc(var(--a) * -1)) translate(8px, -100%) translateY(-6px);
+}
+.px-fan-txt.sub { font-weight: 700; }
+.px-fan-txt.sub::after { content: ' ▸'; color: #888; }
+.px-fan-txt.sub:hover::after,
+.px-fan-txt.sub.open::after { color: var(--gold); }
+.px-fan-txt.cur { color: var(--gold); }
+.px-fan-txt.cur::after { content: ' ·'; }
+
+/* ── D20 骰子（今日报纸），居于环心 ── */
+.px-orb-hub {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+  animation: px-ring-in .6s .1s both;
+}
+/* 骰子外圈反向慢速虚线圆 */
+.px-orb-hub::before {
+  content: '';
+  position: absolute;
+  left: calc(50% - var(--dieD) * 0.64);
+  top: calc(50% - var(--dieD) * 0.64);
+  width: calc(var(--dieD) * 1.28);
+  height: calc(var(--dieD) * 1.28);
+  border: 1px dashed var(--border-dash);
+  border-radius: 50% !important;   /* 覆盖全局 border-radius:0 重置 */
+  animation: px-orbit 28s linear infinite reverse;
+  pointer-events: none;
+}
+.px-die {
+  position: relative;
+  width: var(--dieD);
+  height: var(--dieD);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform .15s ease;
+  outline-offset: 4px;
+  perspective: 700px;
+}
+.px-die:hover { transform: scale(1.06); }
+/* 3D 原地转动：正/背两面卡片，掷骰时双轴翻滚 */
+.px-die-3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.px-die-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.px-die-face.back { transform: rotateY(180deg); }
+.px-die-face svg { width: 100%; height: 100%; display: block; }
+.px-die.spinning .px-die-3d { animation: px-die-tumble .55s linear infinite; }
+@keyframes px-die-tumble {
+  0%   { transform: rotateX(0)      rotateY(0); }
+  100% { transform: rotateX(360deg) rotateY(360deg); }
+}
+.die-num { font-family: var(--font-disp); font-size: 40px; fill: #ffffff; }
+.die-f   { font-family: var(--font-disp); font-size: 17px; fill: #c9c9c9; }
+/* 停定数字变金黄 */
+.px-die.gold .die-num {
+  fill: var(--gold);
+  filter: drop-shadow(0 0 5px rgba(243, 199, 79, 0.9));
+}
+.px-die.gold svg { filter: drop-shadow(0 0 12px rgba(243, 199, 79, 0.35)); }
+.px-die-cap {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  visibility: hidden;   /* 掷骰落定后才出现 */
+}
+.px-die-cap.on { visibility: visible; }
+
+/* ── 封面首页（今日报纸独立成页，仅掷骰/链接进入） ── */
+.cover-hero {
+  min-height: calc(100vh - var(--header-height) - 140px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+}
+.cover-kicker {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 6px;
+  color: var(--text-dim);
+}
+.cover-title {
+  margin: 0;
+  font-family: var(--font-disp);
+  font-size: clamp(44px, 7vw, 96px);
+  line-height: 1;
+  color: var(--text-head);
+  text-shadow: 4px 4px 0 rgba(255, 255, 255, 0.08);
+}
+.cover-hint { margin: 10px 0 0; }
+.cover-hint a {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  text-decoration: none;
+  border-bottom: 1px dashed var(--gold);
+  padding-bottom: 3px;
+}
+.cover-hint a::after { content: ' ▮'; animation: px-blink 1.06s steps(1) infinite; }
+.cover-hint a:hover { background: var(--gold); color: #000; }
+
+/* ══════════════════════════════════════════════════════════════
+   菜单 ⇄ 正文 相互挤占：首页菜单占整页（px-home）；
+   收缩态（px-shut）圆环收成无数字旋转小骰，正文挤占回页面
+   ══════════════════════════════════════════════════════════════ */
+
+/* 环系包裹层：收缩/展开的挤压动画作用于它（子元素各自的入场动画不受影响） */
+.px-orb-rings { position: absolute; left: 0; top: 0; transition: opacity .45s ease, transform .55s cubic-bezier(.22,.9,.24,1); }
+.px-fan-layer { transition: opacity .3s ease; }
+.px-orb { transition: left .55s cubic-bezier(.22,.9,.24,1), top .55s cubic-bezier(.22,.9,.24,1); }
+.px-orb-hub::before {
+  transition: left .55s cubic-bezier(.22,.9,.24,1), top .55s cubic-bezier(.22,.9,.24,1),
+    width .55s cubic-bezier(.22,.9,.24,1), height .55s cubic-bezier(.22,.9,.24,1);
+}
+.px-die { transition: width .55s cubic-bezier(.22,.9,.24,1), height .55s cubic-bezier(.22,.9,.24,1), transform .15s ease; }
+.die-num, .die-f { transition: opacity .3s ease; }
+.px-die-cap { transition: opacity .3s ease; }
+
+/* 首页几何：圆环居左中、占满整页（正文板块在像素版桌面端不渲染） */
+body.px-home { --hubX: clamp(230px, 32vw, 540px); --hubY: 48vh; --dieD: clamp(140px, 14.5vw, 235px); }
+
+/* 收缩态几何（置于 px-home 之后，确保首页点词条收缩时也生效） */
+body.px-shut { --hubX: 64px; --hubY: 80px; --dieD: 54px; }
+body.px-shut .px-orb-rings { opacity: 0; transform: scale(.55); pointer-events: none; }
+body.px-shut .px-orb-bar { pointer-events: none; }
+body.px-shut .px-fan-layer { opacity: 0; pointer-events: none; }
+body.px-shut .die-num, body.px-shut .die-f { opacity: 0; }   /* 无数字骰子 */
+body.px-shut .px-die-cap { opacity: 0; }
+body.px-shut .px-die .px-die-3d { animation: px-die-idle 8s linear infinite; }
+@keyframes px-die-idle { to { transform: rotate(360deg); } }
+
+@media (min-width: 769px) {
+  /* 首页：右侧板块整页让给圆环菜单（经典版/移动端仍显示封面） */
+  body.px-home .content { display: none; }
+  /* 正文随菜单收缩/展开挤占页面（padding 过渡即相互挤压） */
+  .content {
+    transition: padding-left .6s cubic-bezier(.22,.9,.24,1),
+      transform .6s cubic-bezier(.22,.9,.24,1) .06s, opacity .5s ease .06s;
+  }
+  body.px-shut .content { padding-left: 92px; }
+  /* 内容页载入：正文从被挤压位展开进来 */
+  body.px-enter .content { transform: translateX(64px); opacity: 0; }
+}
+
+/* 扇形窗口范围指示（▲/▼ 实心 = 该方向可滚） */
+.px-fan-range {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: #8a8a8a;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: px-fan-fade .3s .25s both;
+}
+/* 滚轮重绘：即时定位，不重播淡入 */
+.px-fan-layer.instant .px-fan-dot,
+.px-fan-layer.instant .px-fan-txt,
+.px-fan-layer.instant .px-fan-range { animation: none !important; }

@@ -20,7 +20,7 @@
   </script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
 </head>
-<body>
+<body class="{{bodyclass}}">
   <header class="site-header">
     <button class="menu-toggle" id="menuToggle" aria-label="切换菜单">☰</button>
     <a href="{{root}}index.html" class="site-title"><span class="site-icon">📖 </span><span class="site-name">1999剧情Wiki</span><small>THE REVERSE: 1999 CHRONICLE</small></a>
@@ -34,6 +34,8 @@
   <!-- 像素版专属固定装饰（经典版隐藏） -->
   <div class="px-edge" aria-hidden="true">REVERSE:1999 — STORY ARCHIVE</div>
   <div class="px-coord" aria-hidden="true">SIG/1999.12.31 // CH-01 ▚▚▚</div>
+  <!-- 像素版圆环菜单 + D20 今日报纸（经典版隐藏，内容由脚本从侧边栏导航构建） -->
+  <div id="pxOrb" class="px-orb" aria-label="圆环导航"></div>
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
@@ -193,6 +195,381 @@
         });
       }, { threshold: 0.04, rootMargin: '0px 0px -4% 0px' });
       els.forEach(el => io.observe(el));
+    })();
+
+    /* ── 像素版圆环菜单 + D20 今日报纸 ──
+       从 .nav-tree DOM 解析分组；经典版中 .px-orb 隐藏，此处仅构建不展示 */
+    (function () {
+      const orb = document.getElementById('pxOrb');
+      const nav = document.querySelector('.nav-tree');
+      if (!orb || !nav) return;
+
+      const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      const stripArrow = s => s.replace(/[▾▶]/g, '').trim();
+
+      /* 解析分组（含二级子分组与当前状态） */
+      const groups = [...nav.querySelectorAll(':scope > .nav-group')].map(g => {
+        const titleEl = g.querySelector('.nav-group-title');
+        const items = [];
+        g.querySelectorAll(':scope > .nav-list > li').forEach(li => {
+          if (li.classList.contains('nav-subgroup')) {
+            const st = li.querySelector('.nav-subgroup-title');
+            const links = [...li.querySelectorAll('.nav-sublist a')]
+              .map(a => ({ t: a.textContent.trim(), h: a.getAttribute('href'), cur: a.classList.contains('active') }));
+            items.push({ sub: stripArrow(st ? st.textContent : ''), links });
+          } else {
+            const a = li.querySelector('a');
+            if (!a) return;
+            /* 「今日报纸」不进圆环菜单——由 D20 骰子承载 */
+            if (a.textContent.trim() === '今日报纸') return;
+            items.push({ t: a.textContent.trim(), h: a.getAttribute('href'), cur: a.classList.contains('active') });
+          }
+        });
+        return {
+          title: stripArrow(titleEl ? titleEl.textContent : ''),
+          items,
+          cur: g.classList.contains('current'),
+        };
+      });
+      if (!groups.length) return;
+
+      /* ── 组装圆环 DOM（草图格局：骰子居环心，同心圆环，L1 白底条贴环，L2 扇形文字） ── */
+      const step = 360 / groups.length;
+      let html = '<div class="px-orb-rings">'
+        + '<div class="px-orb-cross"></div>'
+        + '<div class="px-orb-ring r1"></div>'
+        + '<div class="px-orb-ring r3"></div>'
+        + '<div class="px-orb-ring r2"></div>'
+        + '<div class="px-orb-ticks"></div>'
+        + '<div class="px-orb-bars" id="pxOrbBars">';
+      groups.forEach((g, i) => {
+        html += `<span class="px-orb-bar${g.cur ? ' cur' : ''}" data-i="${i}" tabindex="0" role="button" style="--a:${(i * step).toFixed(1)}deg;--i:${i}"><i>${String(i + 1).padStart(2, '0')}</i>${esc(g.title)}</span>`;
+      });
+      html += '</div></div>';
+
+      /* ── D20 骰子 SVG（二十面体正面投影：正六边形外廓，10 个三角面无缝拼合，左上光照） ── */
+      const dieSvg = `
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <g stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round">
+    <polygon points="100,14 25.5,57 100,66"   fill="#3b3b3b"/>
+    <polygon points="25.5,57 100,66 71,117"  fill="#343434"/>
+    <polygon points="25.5,57 71,117 25.5,143" fill="#2e2e2e"/>
+    <polygon points="100,14 100,66 174.5,57" fill="#292929"/>
+    <polygon points="100,66 71,117 129,117"  fill="#242424"/>
+    <polygon points="100,66 174.5,57 129,117" fill="#202020"/>
+    <polygon points="174.5,57 174.5,143 129,117" fill="#1b1b1b"/>
+    <polygon points="71,117 100,186 25.5,143" fill="#161616"/>
+    <polygon points="71,117 129,117 100,186" fill="#111111"/>
+    <polygon points="129,117 174.5,143 100,186" fill="#0c0c0c"/>
+  </g>
+  <polygon points="100,14 174.5,57 174.5,143 100,186 25.5,143 25.5,57" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
+  <text class="die-f" x="75" y="46" text-anchor="middle" dominant-baseline="central">18</text>
+  <text class="die-f" x="125" y="46" text-anchor="middle" dominant-baseline="central">4</text>
+  <text class="die-f" x="66" y="80" text-anchor="middle" dominant-baseline="central">2</text>
+  <text class="die-f" x="134" y="80" text-anchor="middle" dominant-baseline="central">14</text>
+  <text class="die-f" x="41" y="106" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 41 106)">12</text>
+  <text class="die-f" x="159" y="106" text-anchor="middle" dominant-baseline="central" transform="rotate(90 159 106)">9</text>
+  <text class="die-f" x="66" y="149" text-anchor="middle" dominant-baseline="central" transform="rotate(180 66 149)">10</text>
+  <text class="die-f" x="134" y="149" text-anchor="middle" dominant-baseline="central" transform="rotate(180 134 149)">16</text>
+  <text class="die-f" x="100" y="140" text-anchor="middle" dominant-baseline="central" transform="rotate(180 100 140)">8</text>
+  <text class="die-num" id="pxDieNum" x="100" y="100" text-anchor="middle" dominant-baseline="central">20</text>
+</svg>`;
+      /* 背面：同图无 id（3D 原地转动时可见） */
+      const dieSvgBack = dieSvg.replace(' id="pxDieNum"', '');
+      html += '<div class="px-orb-hub">'
+        + '<div class="px-die" id="pxDie" role="button" tabindex="0" aria-label="今日报纸：掷骰随机跳转词条">'
+        + '<div class="px-die-3d"><div class="px-die-face front">'
+        + dieSvg
+        + '</div><div class="px-die-face back" aria-hidden="true">'
+        + dieSvgBack
+        + '</div></div>'
+        + '</div><div class="px-die-cap" id="pxDieCap"></div></div>';
+      html += '<div class="px-fan-layer" id="pxFan1"></div><div class="px-fan-layer" id="pxFan2"></div>';
+      orb.innerHTML = html;
+
+      /* ── 菜单交互：JS 驱动慢速自转；选中分组先快速吸附到水平角，再展开扇形；
+         点词条后菜单收缩成无数字旋转小骰，正文挤占回页面 ── */
+      const barsLayer = orb.querySelector('#pxOrbBars');
+      const ring2El = orb.querySelector('.px-orb-ring.r2');
+      const fan1 = orb.querySelector('#pxFan1');
+      const fan2 = orb.querySelector('#pxFan2');
+      const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const AUTO_DPS = 360 / 110000;     /* 自转速度：110s 一周 */
+      const SNAP_MS = 380;               /* 吸附旋转时长 */
+      const WIN = 8;                     /* 扇形窗口条数：超出用滚轮滑动 */
+      const isHome = document.body.classList.contains('px-home');
+      let rot = 0, paused = false, hideT = null, snap = null;
+      let fan1State = null, fan2State = null;
+
+      let lastT = performance.now();
+      (function tickFrame(now) {
+        const dt = Math.min(80, now - lastT); lastT = now;
+        if (snap) {
+          const t = Math.min(1, (now - snap.t0) / SNAP_MS);
+          const e = 1 - Math.pow(1 - t, 3);
+          rot = snap.from + snap.delta * e;
+          if (t >= 1) { const cb = snap.after; snap = null; if (cb) cb(); }
+        } else if (!paused && !reduceMotion) {
+          rot += dt * AUTO_DPS;
+        }
+        barsLayer.style.transform = 'rotate(' + rot.toFixed(2) + 'deg)';
+        requestAnimationFrame(tickFrame);
+      })(lastT);
+
+      /* 正文进场：内容页带 px-enter 载入，首绘后移除以触发挤压展开动画 */
+      if (document.body.classList.contains('px-enter')) {
+        requestAnimationFrame(() => requestAnimationFrame(() => document.body.classList.remove('px-enter')));
+      }
+
+      function closeFans() {
+        fan1.innerHTML = ''; fan2.innerHTML = '';
+        fan1State = null; fan2State = null;
+      }
+      function collapseOrb() {
+        closeFans(); snap = null; paused = true;
+        document.body.classList.add('px-shut');
+        orb.querySelectorAll('.px-orb-bar.act').forEach(b => b.classList.remove('act'));
+      }
+      function expandOrb() {
+        document.body.classList.remove('px-shut');
+        paused = false;
+      }
+      /* 词条跳转：先收缩菜单（可见挤压动画），再导航 */
+      function goHref(h) {
+        if (!h) return;
+        collapseOrb();
+        setTimeout(() => { location.href = h; }, reduceMotion ? 0 : 500);
+      }
+
+      /* 扇形文字菜单：从顶点 (st.ax, st.ay) 展开，纯文字词条随序号逐层外移到更大半径；
+         超过 WIN 条时只显示一个窗口（st.off 为窗口起点），用滚轮滑动浏览 */
+      function drawFan(layer, st, instant) {
+        layer.innerHTML = '';
+        layer.classList.toggle('instant', !!instant);
+        /* 每排 8 条、单排角度 8°..64°（不近垂直）；窗口内条目沿半径外移 */
+        const stp = 8;
+        const perRow = 8;
+        /* 顶点到菜单条的虚线引线（沿竖直方向指向菜单条） */
+        if (st.lead > 0) {
+          const ld = document.createElement('i');
+          ld.className = 'px-fan-lead';
+          ld.style.left = st.ax + 'px';
+          ld.style.top = (st.dirY > 0 ? st.ay - st.lead : st.ay) + 'px';
+          ld.style.height = st.lead + 'px';
+          layer.appendChild(ld);
+        }
+        const ch = document.createElement('i');
+        ch.className = 'px-fan-apex';
+        ch.style.left = st.ax + 'px';
+        ch.style.top = st.ay + 'px';
+        layer.appendChild(ch);
+
+        const overflow = st.entries.length > WIN;
+        const vis = overflow ? st.entries.slice(st.off, st.off + WIN) : st.entries;
+        vis.forEach((it, k) => {
+          const spread = 8 + (k % perRow) * stp;
+          const a = st.dirX > 0 ? st.dirY * spread : 180 - st.dirY * spread;
+          const r0 = 44 + k * 26 * st.scale;
+          const rad = a * Math.PI / 180;
+          /* 标签侧按锚点屏幕位置单独决定：默认与扇形同侧朝圆心，伸出屏外则翻转 */
+          const anchorX = orb.getBoundingClientRect().left + st.ax + r0 * Math.cos(rad);
+          let flip = st.dirX < 0;
+          if (!flip && anchorX < 150) flip = true;
+          else if (flip && anchorX + 150 > window.innerWidth) flip = false;
+          const item = document.createElement('div');
+          item.className = 'px-fan-item';
+          item.style.left = st.ax + 'px';
+          item.style.top = st.ay + 'px';
+          item.style.setProperty('--a', a.toFixed(1) + 'deg');
+          item.style.setProperty('--d', (k * 26) + 'ms');
+          if (flip) item.classList.add('flip');   /* 标签翻转到另一侧（避免伸出屏外） */
+          /* 锚点小方点（参考图的射线只是词条占位，菜单只保留文字） */
+          const dot = document.createElement('i');
+          dot.className = 'px-fan-dot';
+          dot.style.left = r0 + 'px';
+          item.appendChild(dot);
+          const el = document.createElement(it.h ? 'a' : 'span');
+          el.className = 'px-fan-txt' + (it.sub ? ' sub' : '') + (it.cur ? ' cur' : '');
+          el.style.left = r0 + 'px';
+          el.textContent = it.t;
+          if (it.h) el.href = it.h;
+          else el.tabIndex = 0;
+          item.appendChild(el);
+          if (it.links) {
+            const openL2 = () => {
+              clearTimeout(hideT);
+              fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
+              el.classList.add('open');
+              const rad = a * Math.PI / 180;
+              /* 二级扇形反向（-dirY）张开：词条落入菜单条与一级扇形之间的空白角域，
+                 避免与一级词条重叠 */
+              fan2State = {
+                entries: it.links,
+                ax: st.ax + r0 * Math.cos(rad),
+                ay: st.ay + r0 * Math.sin(rad) - st.dirY * 22,
+                scale: 0.62, dirX: st.dirX, dirY: -st.dirY, lead: 22, off: 0,
+              };
+              drawFan(fan2, fan2State, false);
+            };
+            el.addEventListener('mouseenter', openL2);
+            el.addEventListener('click', openL2);
+            el.addEventListener('keydown', e => {
+              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openL2(); }
+            });
+          } else {
+            el.addEventListener('mouseenter', () => {
+              clearTimeout(hideT);
+              fan2.innerHTML = ''; fan2State = null;
+              fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
+            });
+            /* 点中词条：菜单收缩成小骰（挤压动画）后跳转 */
+            el.addEventListener('click', e => {
+              if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              e.preventDefault();
+              goHref(it.h);
+            });
+          }
+          el.addEventListener('mouseleave', scheduleHide);
+          layer.appendChild(item);
+        });
+        /* 窗口范围指示（▲/▼ 实心 = 该方向可滚）：置于扇形最末排之外，避免压住词条 */
+        if (overflow) {
+          const end = Math.min(st.off + WIN, st.entries.length);
+          const lastR = 44 + (vis.length - 1) * 26 * st.scale;
+          const rg = document.createElement('i');
+          rg.className = 'px-fan-range';
+          rg.style.left = st.ax + 'px';
+          rg.style.top = (st.ay + st.dirY * (lastR * 0.9 + 24)) + 'px';
+          rg.textContent = (st.off > 0 ? '▲ ' : '△ ')
+            + (st.off + 1) + '–' + end + '/' + st.entries.length
+            + (end < st.entries.length ? ' ▼' : ' ▽');
+          layer.appendChild(rg);
+        }
+      }
+      /* 选中一级分组：圆环快速旋转吸附到该条水平（几乎平行浏览器），到位后再展开扇形 */
+      function showGroup(i) {
+        clearTimeout(hideT);
+        paused = true;
+        closeFans();
+        orb.querySelectorAll('.px-orb-bar').forEach(b => b.classList.toggle('act', +b.dataset.i === i));
+        if (!groups[i].items.length) return;
+        const target = -i * step;
+        const delta = ((target - rot) % 360 + 540) % 360 - 180;
+        if (reduceMotion || Math.abs(delta) < 0.5) {
+          rot = target;
+          openGroup(i);
+        } else {
+          snap = { from: rot, delta, t0: performance.now(), after: () => openGroup(i) };
+        }
+      }
+      /* 扇形固定从水平位（环右侧 0° 处）向右下展开 */
+      function openGroup(i) {
+        const g = groups[i];
+        const entries = g.items.map(it => it.sub
+          ? { t: it.sub, sub: true, links: it.links }
+          : it);
+        if (!entries.length) return;
+        const r2 = ring2El.offsetWidth / 2;
+        fan1State = { entries, ax: r2, ay: 38, scale: 1, dirX: 1, dirY: 1, lead: 38, off: 0 };
+        drawFan(fan1, fan1State, false);
+      }
+      function scheduleHide() {
+        clearTimeout(hideT);
+        hideT = setTimeout(() => {
+          closeFans(); snap = null;
+          if (!document.body.classList.contains('px-shut')) paused = false;
+          orb.querySelectorAll('.px-orb-bar.act').forEach(b => b.classList.remove('act'));
+        }, 450);
+      }
+      orb.querySelectorAll('.px-orb-bar').forEach(el => {
+        const i = +el.dataset.i;
+        el.addEventListener('mouseenter', () => showGroup(i));
+        el.addEventListener('click', () => showGroup(i));
+        el.addEventListener('focus', () => showGroup(i));
+        el.addEventListener('blur', scheduleHide);
+        el.addEventListener('keydown', e => {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showGroup(i); }
+        });
+      });
+      orb.addEventListener('mouseenter', () => clearTimeout(hideT));
+      orb.addEventListener('mouseleave', scheduleHide);
+
+      /* 扇形超窗滚轮滑动：二级扇形展开时优先滚二级，否则滚一级；不超载则不拦截页面滚动 */
+      document.addEventListener('wheel', e => {
+        if (document.body.classList.contains('px-shut')) return;
+        let st = null, layer = null;
+        if (fan2State && fan2State.entries.length > WIN) { st = fan2State; layer = fan2; }
+        else if (!fan2State && fan1State && fan1State.entries.length > WIN) { st = fan1State; layer = fan1; }
+        if (!st) return;
+        e.preventDefault();
+        const maxOff = st.entries.length - WIN;
+        const no = Math.max(0, Math.min(maxOff, st.off + (e.deltaY > 0 ? 1 : -1)));
+        if (no === st.off) return;
+        st.off = no;
+        if (layer === fan1) { fan2.innerHTML = ''; fan2State = null; }
+        drawFan(layer, st, true);
+      }, { passive: false });
+
+      /* 内容页：点菜单之外的背景（或按 Esc）把菜单收回小骰，正文挤占回页面 */
+      if (!isHome) {
+        document.addEventListener('click', e => {
+          if (document.body.classList.contains('px-shut')) return;
+          if (e.target.closest && e.target.closest('#pxOrb')) return;
+          collapseOrb();
+        });
+        document.addEventListener('keydown', e => {
+          if (e.key === 'Escape' && !document.body.classList.contains('px-shut')) collapseOrb();
+        });
+      }
+
+      /* ── D20 掷骰 → 今日报纸（骰子为报纸唯一入口；报纸每次加载随机换一批） ── */
+      const die = orb.querySelector('#pxDie');
+      const num = orb.querySelector('#pxDieNum');
+      const cap = orb.querySelector('#pxDieCap');
+      const rootUrl = (document.getElementById('cssPixel').getAttribute('href') || '').replace(/pixel\.css$/, '');
+      let rolling = false;
+
+      function jumpPaper() {
+        location.href = rootUrl + 'newspaper.html';
+      }
+      function land(final) {
+        num.textContent = final;
+        die.classList.remove('spinning');
+        die.classList.add('gold');
+        /* 落定后才出现「今日报纸」内容 */
+        cap.textContent = '今日报纸 · NO.' + final;
+        cap.classList.add('on');
+      }
+      function roll() {
+        if (rolling) return;
+        rolling = true;
+        const final = 1 + ((Math.random() * 20) | 0);
+        if (reduceMotion) {
+          land(final);
+          setTimeout(jumpPaper, 300);
+          return;
+        }
+        die.classList.add('spinning');
+        let ticks = 0;
+        const total = 13 + ((Math.random() * 6) | 0);
+        const iv = setInterval(() => {
+          num.textContent = 1 + ((Math.random() * 20) | 0);
+          if (++ticks >= total) {
+            clearInterval(iv);
+            land(final);
+            setTimeout(jumpPaper, 750);
+          }
+        }, 70);
+      }
+      /* 收缩态：骰子是菜单开关（点了展开圆环）；展开态：骰子掷今日报纸 */
+      function dieTap() {
+        if (document.body.classList.contains('px-shut')) { expandOrb(); return; }
+        roll();
+      }
+      die.addEventListener('click', dieTap);
+      die.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dieTap(); }
+      });
     })();
   </script>
 </body>

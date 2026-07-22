@@ -1106,3 +1106,17 @@ article li:has(.item-inline-img) {
 
 /* === 像素版专属装饰：经典版隐藏 === */
 .px-edge, .px-coord { display: none; }
+.px-orb { display: none; }
+
+/* === 封面首页（今日报纸独立成页，骰子/链接进入） === */
+.cover-hero { text-align: center; padding: 15vh 20px 12vh; }
+.cover-kicker { font-size: 12px; letter-spacing: 5px; color: #999; }
+.cover-title { font-size: clamp(38px, 6vw, 64px); margin: 14px 0 10px; }
+.cover-hint { margin-top: 18px; }
+.cover-hint a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid #bbb;
+  padding-bottom: 2px;
+}
+.cover-hint a:hover { background: #1a1a1a; color: #fff; }

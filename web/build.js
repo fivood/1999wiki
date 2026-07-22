@@ -1050,6 +1050,7 @@ async function buildAll() {
     let page = template
       .replace(/\{\{title\}\}/g, escapeHtml(title))
       .replace(/\{\{root\}\}/g, root)
+      .replace(/\{\{bodyclass\}\}/g, 'px-shut px-enter')
       .replace(/\{\{nav\}\}/g, navHtml)
       .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
       .replace(/\{\{watermark\}\}/g, watermark)
@@ -1074,13 +1075,28 @@ async function buildAll() {
   const newspaperPage = template
     .replace(/\{\{title\}\}/g, '今日报纸')
     .replace(/\{\{root\}\}/g, '')
+    .replace(/\{\{bodyclass\}\}/g, 'px-shut px-enter')
     .replace(/\{\{nav\}\}/g, buildNav('newspaper.html'))
     .replace(/\{\{breadcrumbs\}\}/g, '')
     .replace(/\{\{watermark\}\}/g, '')
     .replace(/\{\{content\}\}/g, newspaperHtml);
   fs.writeFileSync(path.join(DIST_DIR, 'newspaper.html'), newspaperPage, 'utf-8');
-  // 同时写入根目录默认页，让 https://1999.fivood.com/ 直接显示报纸
-  fs.writeFileSync(path.join(DIST_DIR, 'index.html'), newspaperPage, 'utf-8');
+
+  /* ── 封面首页：站点名 + 圆环菜单/D20 骰子；今日报纸只在掷骰后出现 ── */
+  const coverHtml = `<div class="cover-hero">
+  <div class="cover-kicker">THE REVERSE: 1999 CHRONICLE</div>
+  <h1 class="cover-title">1999剧情Wiki</h1>
+  <p class="cover-hint"><a href="newspaper.html">掷出 D20 · 阅读今日报纸 →</a></p>
+</div>`;
+  const coverPage = template
+    .replace(/\{\{title\}\}/g, '首页')
+    .replace(/\{\{root\}\}/g, '')
+    .replace(/\{\{bodyclass\}\}/g, 'px-home')
+    .replace(/\{\{nav\}\}/g, buildNav('index.html'))
+    .replace(/\{\{breadcrumbs\}\}/g, '')
+    .replace(/\{\{watermark\}\}/g, '')
+    .replace(/\{\{content\}\}/g, coverHtml);
+  fs.writeFileSync(path.join(DIST_DIR, 'index.html'), coverPage, 'utf-8');
 
   /* ── 写入搜索索引 & 复制静态资源 ── */
   fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
