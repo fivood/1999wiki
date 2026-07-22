@@ -1291,8 +1291,18 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 }
 
 @keyframes px-orbit { to { transform: rotate(360deg); } }
+@keyframes px-orbit-cw { to { transform: rotate(360deg); } }
+@keyframes px-orbit-ccw { to { transform: rotate(-360deg); } }
 @keyframes px-ring-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes px-fan-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes px-star-pulse {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+@keyframes px-ring-pulse {
+  0%, 100% { opacity: .38; }
+  50%      { opacity: .78; }
+}
 
 /* 容器：固定在左上，(0,0) 即圆心 hub（骰子所在）；默认不拦截指针 */
 .px-orb {
@@ -1310,8 +1320,11 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   .px-orb { display: block; }
 }
 
-/* 过圆心的十字虚线（工程图风味） */
-.px-orb-cross { position: absolute; left: 0; top: 0; animation: px-ring-in 1.2s both; }
+/* 过圆心的十字虚线（工程图风味）——非常缓慢地公转，星轨的骨架 */
+.px-orb-cross {
+  position: absolute; left: 0; top: 0;
+  animation: px-ring-in 1.2s both, px-orbit-ccw 420s linear infinite;
+}
 .px-orb-cross::before {
   content: '';
   position: absolute;
@@ -1361,6 +1374,88 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   pointer-events: none;
   animation: px-ring-in 1s .3s both;
 }
+
+/* ── 装饰性同心圆轨道（呼吸+慢转），星轨小点在其上公转 ── */
+.px-orb-orbit-line {
+  position: absolute;
+  border-radius: 50% !important;
+  pointer-events: none;
+  animation: px-ring-in 1s .2s both, px-ring-pulse 7s ease-in-out infinite;
+}
+.px-orb-orbit-line.ol-a {
+  --or: calc(var(--r1) * 0.72);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border: 1px dotted rgba(200, 200, 200, 0.45);
+}
+.px-orb-orbit-line.ol-b {
+  --or: calc(var(--r1) * 1.12);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border: 1px dashed rgba(200, 200, 200, 0.28);
+}
+.px-orb-orbit-line.ol-c {
+  --or: calc(var(--r2) * 1.46);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border: 1px dotted rgba(200, 200, 200, 0.22);
+}
+/* 公转层：绕 hub (0,0) 旋转，子星点带着走；不同周期与方向 */
+.px-orb-orbit {
+  position: absolute;
+  left: 0; top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  animation: px-ring-in .9s .3s both;
+}
+.px-orb-orbit.o1 { animation: px-ring-in .9s .3s both, px-orbit-cw  48s linear infinite; }
+.px-orb-orbit.o2 { animation: px-ring-in .9s .4s both, px-orbit-ccw 118s linear infinite; }
+.px-orb-orbit.o3 { animation: px-ring-in .9s .5s both, px-orbit-cw 220s linear infinite; }
+.px-orb-orbit.o4 { animation: px-ring-in .9s .6s both, px-orbit-ccw 340s linear infinite; }
+/* 星点：绕 hub 定位于 (--pa, --pr)；与父轨一起转 */
+.px-orb-star {
+  position: absolute;
+  left: 0; top: 0;
+  width: 5px; height: 5px;
+  background: #fafafa;
+  border-radius: 50% !important;
+  transform: rotate(var(--pa)) translate(var(--pr)) translate(-50%, -50%);
+  transform-origin: 0 0;
+  box-shadow: 0 0 6px rgba(255,255,255,0.55), 0 0 12px rgba(255,255,255,0.25);
+  animation: px-star-pulse 3.4s ease-in-out infinite;
+}
+/* 慧星：星点带一条向内 fade 的尾迹（内侧较亮，向切线方向淡出） */
+.px-orb-star.comet {
+  width: 4px; height: 4px;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(243,199,79,0.75), 0 0 20px rgba(243,199,79,0.35);
+}
+.px-orb-star.comet::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 100%;                  /* 尾迹沿"内侧"方向拖出 */
+  width: 42px; height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(to left, rgba(243,199,79,0.7), rgba(243,199,79,0));
+  pointer-events: none;
+}
+
+/* ── 拖动 hit 区：圆盘中间空白区域可抓、可转（不拦截白条/骰子/扇形）── */
+.px-orb-drag {
+  position: absolute;
+  --or: calc(var(--r2) * 1.35);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border-radius: 50% !important;
+  z-index: 3;                   /* 白条 z-6、hub z-5、扇形 z-7 都在其上 */
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  background: transparent;
+}
+.px-orb-drag.grab,
+.px-orb-drag:active { cursor: grabbing; }
 
 /* L1 白底条：只分布在右上 1/4 弧（-50°..+40°），长轴径向指向骰子；
    锚点取「内左边缘中心」= r2 点，选中时 padding-right 平滑扩张 → 条向外伸长 */

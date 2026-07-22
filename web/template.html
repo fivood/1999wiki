@@ -238,12 +238,26 @@
       const ARC_START = -32, ARC_SPAN = 88;
       const step = groups.length > 1 ? ARC_SPAN / (groups.length - 1) : 0;
       const barAngle = i => ARC_START + i * step;
+      /* 装饰性轨道：多层同心圆 + 沿轨道公转的小星点/慧星（不同周期与方向） */
+      const orbits = ''
+        + '<div class="px-orb-orbit-line ol-a"></div>'
+        + '<div class="px-orb-orbit-line ol-b"></div>'
+        + '<div class="px-orb-orbit-line ol-c"></div>'
+        + '<div class="px-orb-orbit o1"><i class="px-orb-star comet" style="--pa:20deg;--pr:calc(var(--r1) * 0.72)"></i></div>'
+        + '<div class="px-orb-orbit o2"><i class="px-orb-star" style="--pa:60deg;--pr:calc(var(--r1) * 1.12)"></i>'
+          + '<i class="px-orb-star" style="--pa:240deg;--pr:calc(var(--r1) * 1.12)"></i></div>'
+        + '<div class="px-orb-orbit o3"><i class="px-orb-star comet" style="--pa:150deg;--pr:calc(var(--r2) * 1.18)"></i></div>'
+        + '<div class="px-orb-orbit o4"><i class="px-orb-star" style="--pa:35deg;--pr:calc(var(--r2) * 1.46)"></i>'
+          + '<i class="px-orb-star" style="--pa:170deg;--pr:calc(var(--r2) * 1.46)"></i>'
+          + '<i class="px-orb-star" style="--pa:295deg;--pr:calc(var(--r2) * 1.46)"></i></div>';
       let html = '<div class="px-orb-rings">'
         + '<div class="px-orb-cross"></div>'
         + '<div class="px-orb-ring r1"></div>'
         + '<div class="px-orb-ring r3"></div>'
         + '<div class="px-orb-ring r2"></div>'
         + '<div class="px-orb-ticks"></div>'
+        + orbits
+        + '<div class="px-orb-drag" id="pxOrbDrag" aria-label="拖动旋转菜单轮盘"></div>'
         + '<div class="px-orb-bars" id="pxOrbBars">';
       groups.forEach((g, i) => {
         html += `<span class="px-orb-bar${g.cur ? ' cur' : ''}" data-i="${i}" tabindex="0" role="button" style="--a:${barAngle(i).toFixed(2)}deg;--i:${i}"><i>${String(i + 1).padStart(2, '0')}</i>${esc(g.title)}</span>`;
@@ -295,11 +309,92 @@
       const ring2El = orb.querySelector('.px-orb-ring.r2');
       const fan1 = orb.querySelector('#pxFan1');
       const fan2 = orb.querySelector('#pxFan2');
+      const barsLayer = orb.querySelector('#pxOrbBars');
+      const dragSurface = orb.querySelector('#pxOrbDrag');
       const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
       /* 可视条数由 drawFan 每次按视口动态测出（st.visibleCount），滚轮基于此翻窗 */
       const isHome = document.body.classList.contains('px-home');
       let hideT = null;
       let fan1State = null, fan2State = null;
+
+      /* ── 轮盘拖动：在圆环空白区按下拖动，环带 barsLayer 一起旋转；
+         指针移动 > 阈值才判定为拖动（否则给按钮走点击）；释放后按角速度惯性衰减 ── */
+      const DRAG_THRESHOLD = 6;
+      let dragRot = 0;
+      let drag = null;
+      let inertiaRaf = null;
+      const applyBarsRot = () => {
+        barsLayer.style.transform = 'rotate(' + dragRot.toFixed(3) + 'deg)';
+      };
+      const hubCenter = () => {
+        const r = orb.getBoundingClientRect();
+        return { x: r.left, y: r.top };
+      };
+      const angleFromHub = (x, y) => {
+        const c = hubCenter();
+        return Math.atan2(y - c.y, x - c.x) * 180 / Math.PI;
+      };
+      const cancelInertia = () => {
+        if (inertiaRaf) { cancelAnimationFrame(inertiaRaf); inertiaRaf = null; }
+      };
+      dragSurface.addEventListener('pointerdown', e => {
+        cancelInertia();
+        const a = angleFromHub(e.clientX, e.clientY);
+        drag = {
+          id: e.pointerId,
+          sx: e.clientX, sy: e.clientY,
+          lastA: a, lastT: performance.now(),
+          angVel: 0, moved: false,
+        };
+      });
+      dragSurface.addEventListener('pointermove', e => {
+        if (!drag || drag.id !== e.pointerId) return;
+        const dx = e.clientX - drag.sx, dy = e.clientY - drag.sy;
+        if (!drag.moved && Math.hypot(dx, dy) > DRAG_THRESHOLD) {
+          drag.moved = true;
+          try { dragSurface.setPointerCapture(e.pointerId); } catch (_) {}
+          dragSurface.classList.add('grab');
+          /* 拖动中收起扇形，避免旧扇形跟着一起转（几何不再对齐白条位置） */
+          closeFans();
+          clearTimeout(hideT);
+        }
+        if (!drag.moved) return;
+        const curA = angleFromHub(e.clientX, e.clientY);
+        const now = performance.now();
+        let delta = curA - drag.lastA;
+        if (delta > 180) delta -= 360;
+        if (delta < -180) delta += 360;
+        const dt = Math.max(1, now - drag.lastT);
+        drag.angVel = delta / dt * 1000;   /* deg/s */
+        dragRot += delta;
+        drag.lastA = curA;
+        drag.lastT = now;
+        applyBarsRot();
+      });
+      const endDrag = e => {
+        if (!drag || drag.id !== e.pointerId) return;
+        const dragged = drag.moved;
+        const v0 = drag.angVel;
+        try { dragSurface.releasePointerCapture(e.pointerId); } catch (_) {}
+        dragSurface.classList.remove('grab');
+        drag = null;
+        if (!dragged) return;
+        if (reduceMotion || Math.abs(v0) < 8) return;
+        /* 惯性衰减：0.94/帧 ≈ 每秒 6.3% 保留率，直觉上顺滑但会停 */
+        let vel = v0;
+        const decay = 0.94;
+        let lastT = performance.now();
+        (function tick(now) {
+          if (Math.abs(vel) < 4) { inertiaRaf = null; return; }
+          const dt = Math.min(48, now - lastT); lastT = now;
+          dragRot += vel * dt / 1000;
+          vel *= decay;
+          applyBarsRot();
+          inertiaRaf = requestAnimationFrame(tick);
+        })(lastT);
+      };
+      dragSurface.addEventListener('pointerup', endDrag);
+      dragSurface.addEventListener('pointercancel', endDrag);
 
       /* 正文进场：内容页带 px-enter 载入，首绘后移除以触发挤压展开动画 */
       if (document.body.classList.contains('px-enter')) {
@@ -473,7 +568,8 @@
           : it);
         if (!entries.length) return;
         const bar = orb.querySelector('.px-orb-bar[data-i="' + i + '"]');
-        const barA = +bar.style.getPropertyValue('--a').replace('deg', '') || 0;
+        /* 视觉角度 = 白条声明角 + 轮盘拖动量；扇形从视觉位置展开 */
+        const barA = (+bar.style.getPropertyValue('--a').replace('deg', '') || 0) + dragRot;
         const r2 = r2Now();
         /* 白条实际外端半径 = r2 + 条宽 + 伸长量（条宽 = 未伸长的 offsetWidth） */
         const barOuterR = r2 + bar.offsetWidth + BAR_EXT;
