@@ -301,21 +301,21 @@
         + dieSvgBack
         + '</div></div>'
         + '</div><div class="px-die-cap" id="pxDieCap"></div></div>';
-      html += '<div class="px-fan-layer" id="pxFan1"></div><div class="px-fan-layer" id="pxFan2"></div>';
+      html += '<svg class="px-lead" id="pxLead" aria-hidden="true"></svg>'
+        + '<div class="px-panel" id="pxPanel" role="menu" hidden></div>';
       orb.innerHTML = html;
 
       /* ── 菜单交互：一级白条静止分布在右上 1/4 弧；选中时该条 CSS 伸长（padding-right 过渡），
-         扇形从其外端继续径向展开，两级都指向骰子；点词条后菜单收缩成小骰 ── */
+         外端引出折线连到右侧终端面板（二级列表，子分组点开在面板内钻取三级）；
+         点词条后菜单收缩成小骰 ── */
       const ring2El = orb.querySelector('.px-orb-ring.r2');
-      const fan1 = orb.querySelector('#pxFan1');
-      const fan2 = orb.querySelector('#pxFan2');
+      const panel = orb.querySelector('#pxPanel');
+      const lead = orb.querySelector('#pxLead');
       const barsLayer = orb.querySelector('#pxOrbBars');
       const dragSurface = orb.querySelector('#pxOrbDrag');
       const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
-      /* 可视条数由 drawFan 每次按视口动态测出（st.visibleCount），滚轮基于此翻窗 */
       const isHome = document.body.classList.contains('px-home');
       let hideT = null;
-      let fan1State = null, fan2State = null;
 
       /* ── 轮盘拖动：在圆环空白区按下拖动，环带 barsLayer 一起旋转；
          指针移动 > 阈值才判定为拖动（否则给按钮走点击）；释放后按角速度惯性衰减 ── */
@@ -354,7 +354,7 @@
           drag.moved = true;
           try { dragSurface.setPointerCapture(e.pointerId); } catch (_) {}
           dragSurface.classList.add('grab');
-          /* 拖动中收起扇形，避免旧扇形跟着一起转（几何不再对齐白条位置） */
+          /* 拖动中收起面板，避免折线与白条脱离对齐 */
           closeFans();
           clearTimeout(hideT);
         }
@@ -402,10 +402,9 @@
       }
 
       function closeFans() {
-        fan1.innerHTML = ''; fan2.innerHTML = '';
-        fan1.classList.remove('dim');
-        orb.classList.remove('l3-open');
-        fan1State = null; fan2State = null;
+        panel.hidden = true;
+        panel.innerHTML = '';
+        lead.innerHTML = '';
       }
       function collapseOrb() {
         closeFans();
@@ -422,203 +421,103 @@
         setTimeout(() => { location.href = h; }, reduceMotion ? 0 : 500);
       }
 
-      /* ── 径向扇形菜单：每条词条 = 沿所在半径方向书写的文字射线（径向指向骰子），
-         从被选中的一级白条外端继续向外级联展开；越出视口的直接不渲染（严格裁切），
-         隐形滚轮上下移动窗口 ── */
+      /* ── 终端面板：固定在圆环右侧一列；列表按视口高度折成多栏（grid 纵向流），
+         子分组点开后在同一面板内钻取（◂ 返回），不再做径向射线 ── */
       const r2Now = () => ring2El.offsetWidth / 2;
-      /* 一级白条伸长后的外端半径（与 CSS .px-orb-bar.act 的 padding 增量对应） */
+      /* 一级白条伸长量（与 CSS .px-orb-bar.act 的 padding 增量对应） */
       const BAR_EXT = 68;
-      /* 视口安全边距：越出该边界的词条不再渲染 */
-      const SAFE_TOP = 60, SAFE_MARGIN = 10;
-      function drawFan(layer, st, instant) {
-        layer.innerHTML = '';
-        layer.classList.toggle('instant', !!instant);
-        const hubRect = orb.getBoundingClientRect();
-        const vw = window.innerWidth, vh = window.innerHeight;
-        const stepA = st.stepA;
-        /* 三种落位模式：
-             columns  = 多列 1/4 弧（每列填满弧、超出向外开新列，L3 用）
-             variable = stepA===0 沿同一半径向外线性延伸（L2 老式）
-             linear   = 沿 stepA/dr 均匀增长（L1 扇形） */
-        const useCols = st.slots > 0;
-        const variableR = !useCols && stepA === 0;
-        const gap = st.gap || 20;
+      const SAFE_TOP = 64, SAFE_BOTTOM = 20, SAFE_RIGHT = 20, ROW_H = 27;
+      const pad2 = n => String(n).padStart(2, '0');
+      let anchor = null, barW = null;   /* 当前白条外端（hub 坐标），面板与折线据此落位 */
 
-        /* 逐条按理想（r0 + k·dr, a0 + k·stepA）落位；一旦某条越出视口就停止，之后的隐藏
-           列模式（useCols）下：单条越出改为「跳过并继续」，仅当整列全空时才真正 break */
-        let rendered = 0;
-        let currentR = st.r0;
-        let colClips = 0;          /* 列模式：本列已连续裁掉的条数 */
-        let colHasHits = false;    /* 列模式：本列是否至少渲染成功一条 */
-        for (let k = 0; k < st.entries.length - st.off; k++) {
-          const it = st.entries[st.off + k];
-          const slotIdx = useCols ? k % st.slots : k;
-          const col = useCols ? Math.floor(k / st.slots) : 0;
-          const a = st.a0 + slotIdx * stepA;
-          const rad = a * Math.PI / 180;
-          const R = useCols ? st.r0 + col * st.dr : currentR;
-          const item = document.createElement('div');
-          item.className = 'px-fan-item' + (a > 95 ? ' flip' : '');
-          item.style.setProperty('--a', a.toFixed(2) + 'deg');
-          item.style.setProperty('--d', (k * 36) + 'ms');
-          const el = document.createElement(it.h ? 'a' : 'span');
-          el.className = 'px-fan-txt' + (it.sub ? ' sub' : '') + (it.cur ? ' cur' : '');
-          el.textContent = it.t;
-          if (it.h) el.href = it.h;
-          else el.tabIndex = 0;
-          item.appendChild(el);
-          layer.appendChild(item);   /* 先挂到 DOM 才能量文字宽 */
-          const w = el.offsetWidth;
-          el.style.left = R + 'px';
-
-          /* 视口裁切：只要文字末端出屏，本条及以后一律不渲染 */
-          const cos = Math.cos(rad), sin = Math.sin(rad);
-          const startX = hubRect.left + R * cos;
-          const startY = hubRect.top + R * sin;
-          const endX = hubRect.left + (R + w) * cos;
-          const endY = hubRect.top + (R + w) * sin;
-          const outOfView =
-            startX < SAFE_MARGIN || endX < SAFE_MARGIN ||
-            startX > vw - SAFE_MARGIN || endX > vw - SAFE_MARGIN ||
-            startY < SAFE_TOP || endY < SAFE_TOP ||
-            startY > vh - SAFE_MARGIN || endY > vh - SAFE_MARGIN;
-          if (useCols) {
-            /* 每进入一列前重置该列的命中记账 */
-            if (slotIdx === 0) { colClips = 0; colHasHits = false; }
-          }
-          if (outOfView) {
-            layer.removeChild(item);
-            if (useCols) {
-              colClips++;
-              /* 走到列尾且整列全裁 = 该列被视口完全排除，之后半径更大的列同理，break */
-              if (slotIdx === st.slots - 1 && !colHasHits) break;
-              continue;
-            }
-            break;
-          }
-          if (useCols) colHasHits = true;
-
-          /* 射线：从基准半径引至文字起点 */
-          const rayFrom = Math.min(st.rayBase, R - 16);
-          const ray = document.createElement('i');
-          ray.className = 'px-fan-ray';
-          ray.style.left = rayFrom + 'px';
-          ray.style.width = Math.max(0, R - 8 - rayFrom) + 'px';
-          item.appendChild(ray);
-          const dot = document.createElement('i');
-          dot.className = 'px-fan-dot';
-          dot.style.left = rayFrom + 'px';
-          item.appendChild(dot);
-          if (it.links) {
-            /* 子分组：L3 = 多列 1/4 弧——**从父 L2 词条位置向下 + 向外展开**：
-               列 0 首条在父词条尾端沿父角度，后续沿弧向下；列满则向"外"（更大半径）
-               开新列，仍从父角度起始。这样 L3 视觉上从父词条位置扩展开 */
-            const L3_STEP_A = 4.2;         /* 单列内角度步长（度）——越小行距越紧 */
-            const L3_SLOTS = 15;           /* 每列 15 条 */
-            const L3_COL_STEP = 85;        /* 列间半径步长 */
-            const openL2 = () => {
-              clearTimeout(hideT);
-              fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
-              el.classList.add('open');
-              fan1.classList.add('dim');
-              orb.classList.add('l3-open');
-              fan2State = {
-                entries: it.links,
-                /* 计算点 = 父 L2 词条尾端右侧（R + w + 小间距）——L3 col 1 起始处
-                   紧贴父项右侧，视觉上从父词条"延伸"出去 */
-                a0: a,
-                stepA: L3_STEP_A,
-                r0: R + w + 8,
-                dr: L3_COL_STEP,
-                slots: L3_SLOTS,
-                rayBase: R + w + 4,
-                off: 0,
-              };
-              drawFan(fan2, fan2State, false);
-            };
-            el.addEventListener('mouseenter', openL2);
-            el.addEventListener('click', openL2);
-            el.addEventListener('keydown', e => {
-              if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openL2(); }
-            });
+      function renderPanel(i, sub) {
+        const g = groups[i];
+        const list = sub ? sub.links : g.items;
+        const crumb = sub
+          ? `<button type="button" class="px-panel-back" data-back>◂</button>${esc(g.title)}<b>/</b>${esc(sub.sub)}`
+          : esc(g.title);
+        let h = `<div class="px-panel-head"><i>${pad2(i + 1)}</i>${crumb}<span>${pad2(list.length)}</span></div>`
+          + '<div class="px-panel-list">';
+        list.forEach((it, k) => {
+          const d = `style="--d:${Math.min(k, 24) * 18}ms"`;
+          if (it.sub) {
+            const cur = it.links.some(l => l.cur) ? ' cur' : '';
+            h += `<button type="button" class="px-panel-item sub${cur}" data-k="${k}" ${d}>${esc(it.sub)}<em>${pad2(it.links.length)}</em></button>`;
           } else {
-            el.addEventListener('mouseenter', () => {
-              clearTimeout(hideT);
-              if (layer === fan1) {
-                fan2.innerHTML = ''; fan2State = null;
-                fan1.classList.remove('dim');
-                orb.classList.remove('l3-open');
-                fan1.querySelectorAll('.px-fan-txt.open').forEach(x => x.classList.remove('open'));
-              }
-            });
+            h += `<a class="px-panel-item${it.cur ? ' cur' : ''}" href="${esc(it.h)}" ${d}>${esc(it.t)}</a>`;
+          }
+        });
+        panel.innerHTML = h + '</div>';
+        /* 扫出动画只在首次打开播：钻取时重播 clip-path 会让面板瞬间不可点中，误触发 mouseleave 收起 */
+        panel.classList.toggle('in', panel.hidden);
+        panel.hidden = false;
+
+        /* 落位：x 固定在环外一列；行数按可用高度算，超出自动折栏 */
+        const hub = orb.getBoundingClientRect();
+        const vw = window.innerWidth, vh = window.innerHeight;
+        const listEl = panel.querySelector('.px-panel-list');
+        const headH = panel.querySelector('.px-panel-head').offsetHeight;
+        const maxRows = Math.max(4, Math.floor((vh - SAFE_TOP - SAFE_BOTTOM - headH - 24) / ROW_H));
+        const cols = Math.ceil(list.length / maxRows);
+        listEl.style.setProperty('--rows', Math.ceil(list.length / cols));
+        let x = anchor.colX;
+        x = Math.max(anchor.x + 24, Math.min(x, vw - SAFE_RIGHT - hub.left - panel.offsetWidth));
+        let y = anchor.y - headH / 2;
+        y = Math.max(SAFE_TOP - hub.top, Math.min(y, vh - SAFE_BOTTOM - hub.top - panel.offsetHeight));
+        panel.style.left = x + 'px';
+        panel.style.top = y + 'px';
+
+        /* 折线：白条外端 → 斜出 → 水平接到面板标题栏 */
+        const ty = y + headH / 2;
+        const knee = Math.max(anchor.x + 12, x - 28);
+        lead.innerHTML = `<polyline pathLength="1" points="${anchor.x},${anchor.y} ${knee},${ty} ${x},${ty}"/>`
+          + `<rect x="${anchor.x - 3}" y="${anchor.y - 3}" width="6" height="6"/>`;
+
+        panel.querySelectorAll('.px-panel-item').forEach(el => {
+          if (el.dataset.k == null) {
             /* 点中词条：菜单收缩成小骰（挤压动画）后跳转 */
             el.addEventListener('click', e => {
               if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
               e.preventDefault();
-              goHref(it.h);
+              goHref(el.getAttribute('href'));
+            });
+          } else {
+            el.addEventListener('click', () => {
+              renderPanel(i, list[+el.dataset.k]);
+              panel.querySelector('.px-panel-item, .px-panel-back').focus({ preventScroll: true });
             });
           }
-          /* 不给词条挂 mouseleave：wheel 重绘会移除旧节点触发 mouseleave，会误关子菜单；
-             真的离开菜单区域由 orb 层的 mouseleave 判定 */
-          if (!useCols) currentR = variableR ? (R + w + gap) : (R + st.dr);
-          rendered++;
-        }
-        st.visibleCount = rendered;
-
-        /* 隐形滚轮的可视化提示（可上/可下）：小巧地放在最后一条词条外端之后 */
-        const canUp = st.off > 0;
-        const canDown = st.off + rendered < st.entries.length;
-        if ((canUp || canDown) && rendered > 0) {
-          const lastItem = layer.querySelectorAll('.px-fan-item')[rendered - 1];
-          const lastTxt = lastItem.querySelector('.px-fan-txt');
-          const lastLeft = parseFloat(lastTxt.style.left) || 0;
-          const lastW = lastTxt.offsetWidth;
-          const item = document.createElement('div');
-          item.className = 'px-fan-item';
-          item.style.setProperty('--a', lastItem.style.getPropertyValue('--a'));
-          const rg = document.createElement('i');
-          rg.className = 'px-fan-range';
-          rg.style.left = (lastLeft + lastW + 14) + 'px';
-          rg.textContent = (canUp ? '▲ ' : '△ ')
-            + (st.off + 1) + '–' + (st.off + rendered) + '/' + st.entries.length
-            + (canDown ? ' ▼' : ' ▽');
-          item.appendChild(rg);
-          layer.appendChild(item);
-        }
+        });
+        const back = panel.querySelector('[data-back]');
+        if (back) back.addEventListener('click', () => {
+          renderPanel(i, null);
+          const k = g.items.indexOf(sub);
+          const el = panel.querySelector(`[data-k="${k}"]`);
+          if (el) el.focus({ preventScroll: true });
+        });
       }
-      /* 选中一级分组：无旋转、无闪烁——仅切换 .act 触发 CSS 伸长，扇形直接从条外端展开 */
+
+      /* 选中一级分组：仅切换 .act 触发 CSS 伸长，面板从条外端引线展开 */
       function showGroup(i) {
         clearTimeout(hideT);
-        closeFans();
-        orb.querySelectorAll('.px-orb-bar').forEach(b => b.classList.toggle('act', +b.dataset.i === i));
-        if (!groups[i].items.length) return;
-        openGroup(i);
-      }
-      /* 从被选中白条外端向外径向展开：词条按其半径角度书写（指向骰子），角度稍散、半径逐层加大 */
-      function openGroup(i) {
-        const g = groups[i];
-        const entries = g.items.map(it => it.sub
-          ? { t: it.sub, sub: true, links: it.links }
-          : it);
-        if (!entries.length) return;
         const bar = orb.querySelector('.px-orb-bar[data-i="' + i + '"]');
-        /* 视觉角度 = 白条声明角 + 轮盘拖动量；扇形从视觉位置展开 */
-        const barA = (+bar.style.getPropertyValue('--a').replace('deg', '') || 0) + dragRot;
+        if (bar.classList.contains('act') && !panel.hidden) return;   /* 悬停同一条不重绘（保留钻取状态） */
+        closeFans();
+        /* 白条原始宽：首次（尚无 .act 伸长）量一次即可；之后 offsetWidth 可能含伸长过渡中的值 */
+        if (!barW) barW = [...orb.querySelectorAll('.px-orb-bar')].map(b => b.offsetWidth);
+        orb.querySelectorAll('.px-orb-bar').forEach(b => b.classList.toggle('act', b === bar));
+        if (!groups[i].items.length) return;
+        /* 视觉角度 = 白条声明角 + 轮盘拖动量 */
+        const a = ((+bar.style.getPropertyValue('--a').replace('deg', '') || 0) + dragRot) * Math.PI / 180;
         const r2 = r2Now();
-        /* 白条实际外端半径 = r2 + 条宽 + 伸长量（条宽 = 未伸长的 offsetWidth） */
-        const barOuterR = r2 + bar.offsetWidth + BAR_EXT;
-        fan1State = {
-          entries,
-          a0: barA + 6, stepA: 6.5,
-          r0: barOuterR + 30, dr: 26,
-          rayBase: barOuterR + 4, rMin: barOuterR + 20,
-          off: 0,
-        };
-        drawFan(fan1, fan1State, false);
+        const R = r2 + barW[i] + BAR_EXT;
+        anchor = { x: R * Math.cos(a), y: R * Math.sin(a), colX: r2 + Math.max(...barW) + BAR_EXT + 56 };
+        renderPanel(i, null);
       }
       function scheduleHide() {
         clearTimeout(hideT);
         hideT = setTimeout(() => {
+          if (orb.matches(':hover')) return;   /* 面板重排后指针其实仍在菜单上 */
           closeFans();
           orb.querySelectorAll('.px-orb-bar.act').forEach(b => b.classList.remove('act'));
         }, 450);
@@ -635,42 +534,20 @@
       });
       orb.addEventListener('mouseenter', () => clearTimeout(hideT));
       orb.addEventListener('mouseleave', scheduleHide);
+      panel.addEventListener('focusin', () => clearTimeout(hideT));
 
-      /* 隐形滚轮：只要当前扇形有隐藏的条（视口装不下 or 已滚了一部分），
-         滚轮就移动窗口；二级扇形展开时优先滚二级；不可滚则不拦截页面滚动 */
-      const canScroll = st => st && (st.off > 0 || (st.visibleCount || 0) < st.entries.length);
+      /* 滚轮：指针在圆环区（面板除外）时转 L1 轮盘，把底端白条滚上来 */
       document.addEventListener('wheel', e => {
         if (document.body.classList.contains('px-shut')) return;
-        let st = null, layer = null;
-        if (fan2State && canScroll(fan2State)) { st = fan2State; layer = fan2; }
-        else if (!fan2State && canScroll(fan1State)) { st = fan1State; layer = fan1; }
-        if (st) {
-          /* 已有扇形需要翻窗：滚轮 = 翻扇形 */
-          e.preventDefault();
-          clearTimeout(hideT);
-          const maxOff = Math.max(0, st.entries.length - (st.visibleCount || 1));
-          const no = Math.max(0, Math.min(maxOff, st.off + (e.deltaY > 0 ? 1 : -1)));
-          if (no === st.off) return;
-          st.off = no;
-          if (layer === fan1) {
-            fan2.innerHTML = ''; fan2State = null;
-            fan1.classList.remove('dim');
-            orb.classList.remove('l3-open');
-          }
-          drawFan(layer, st, true);
-          return;
-        }
-        /* 否则：只要指针在 orb 区域内（含拖动 hit 区、bars、rings），滚轮就转 L1 轮盘，
-           把 剧情概要 之类落在底端的白条滚上来给扇形留空间 */
-        if (!e.target || !e.target.closest || !e.target.closest('#pxOrb')) return;
+        if (!e.target || !e.target.closest || !e.target.closest('#pxOrb') || e.target.closest('.px-panel')) return;
         e.preventDefault();
         cancelInertia();
         clearTimeout(hideT);
         const rotStep = 5;   /* 每次滚轮 = 5° 旋转 */
         dragRot += (e.deltaY > 0) ? rotStep : -rotStep;
         applyBarsRot();
-        /* 旋转会让当前扇形与白条脱离对齐，直接关掉；用户在新位置重新悬停即可 */
-        if (fan1State || fan2State) closeFans();
+        /* 旋转会让面板折线与白条脱离对齐，直接关掉；用户在新位置重新悬停即可 */
+        closeFans();
       }, { passive: false });
 
       /* 内容页：点菜单之外的背景（或按 Esc）把菜单收回小骰，正文挤占回页面 */

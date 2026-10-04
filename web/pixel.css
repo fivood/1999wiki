@@ -1294,7 +1294,6 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 @keyframes px-orbit-cw { to { transform: rotate(360deg); } }
 @keyframes px-orbit-ccw { to { transform: rotate(-360deg); } }
 @keyframes px-ring-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes px-fan-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes px-star-pulse {
   0%, 100% { opacity: .55; }
   50%      { opacity: 1; }
@@ -1375,12 +1374,6 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   pointer-events: none;
   animation: px-ring-in 1s .3s both;
 }
-
-/* L3 打开时：L1 白条压暗到 15% 让位（悬停仍可切换分组）；L2 由 .dim 单独控制 */
-.px-orb.l3-open .px-orb-bar { opacity: 0.15; transition: opacity .28s ease; }
-.px-orb.l3-open .px-orb-bar.act { opacity: 0.42; }
-.px-orb.l3-open .px-orb-bar:hover { opacity: 0.7; }
-
 /* ── 装饰性同心圆轨道（呼吸+慢转），星轨小点在其上公转 ── */
 .px-orb-orbit-line {
   position: absolute;
@@ -1525,77 +1518,6 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 }
 .px-orb-bar.cur.act::after { color: var(--gold); }
 
-/* ── 径向扇形菜单：词条 = 沿半径方向倾斜书写的文字射线（草图中的「线条」即文字），
-   逐条角度加深、半径增大；二级沿父词条射线继续向外级联展开 ── */
-.px-fan-layer { position: absolute; left: 0; top: 0; z-index: 7; pointer-events: none; }
-/* 二级展开时一级压暗（仍可悬停切换） */
-.px-fan-layer.dim .px-fan-txt:not(.open),
-.px-fan-layer.dim .px-fan-ray,
-.px-fan-layer.dim .px-fan-dot { opacity: .3; }
-
-/* 每条词条 = 一个绕圆心旋转 --a 的射线容器，子元素按半径定位 */
-.px-fan-item {
-  position: absolute;
-  left: 0;
-  top: 0;
-  transform: rotate(var(--a));
-  transform-origin: 0 0;
-}
-/* 射线：环缘引至文字起点（逐层拉长），展开时从内向外生长 */
-.px-fan-ray {
-  position: absolute;
-  top: 0;
-  height: 0;
-  border-top: 1px solid #575757;
-  transform-origin: 0 0;
-  animation: px-ray-grow .32s ease-out both;
-  animation-delay: var(--d);
-  transition: opacity .18s ease;
-}
-@keyframes px-ray-grow { from { transform: scaleX(0); } }
-/* 射线起点小方点（贴环） */
-.px-fan-dot {
-  position: absolute;
-  top: 0;
-  width: 5px;
-  height: 5px;
-  background: #cfcfcf;
-  transform: translate(-50%, -50%);
-  animation: px-fan-fade .2s ease-out both;
-  animation-delay: var(--d);
-  transition: opacity .18s ease;
-}
-/* 词条文字：沿射线方向倾斜书写（不回正），随射线生长淡入；悬停/展开变金黄 */
-.px-fan-txt {
-  position: absolute;
-  top: 0;
-  transform: translateY(-52%);
-  font-family: var(--font-mono);
-  font-size: 13.5px;
-  font-weight: 700;
-  letter-spacing: 2.5px;
-  color: #e8e8e8;
-  white-space: nowrap;
-  text-decoration: none;
-  cursor: pointer;
-  pointer-events: auto;
-  padding: 4px 6px;
-  text-shadow: 0 0 6px #000, 0 0 3px #000;
-  animation: px-fan-fade .26s ease-out both;
-  animation-delay: calc(var(--d) + 90ms);
-  transition: opacity .18s ease, color .12s ease;
-}
-/* 深角度（>95°）词条整字翻转 180°，保持文字不倒置 */
-.px-fan-item.flip .px-fan-txt { transform: translateY(-52%) rotate(180deg); }
-.px-fan-txt:hover,
-.px-fan-txt.open { color: var(--gold); }
-.px-fan-item:hover .px-fan-dot { background: var(--gold); }
-.px-fan-txt.sub::after { content: ' ▸'; color: #888; }
-.px-fan-txt.sub:hover::after,
-.px-fan-txt.sub.open::after { color: var(--gold); }
-.px-fan-txt.cur { color: var(--gold); }
-.px-fan-txt.cur::after { content: ' ·'; }
-
 /* ── D20 骰子（今日报纸），居于环心 ── */
 .px-orb-hub {
   position: absolute;
@@ -1711,7 +1633,6 @@ a:focus-visible, button:focus-visible, input:focus-visible {
 
 /* 环系包裹层：收缩/展开的挤压动画作用于它（子元素各自的入场动画不受影响） */
 .px-orb-rings { position: absolute; left: 0; top: 0; transition: opacity .45s ease, transform .55s cubic-bezier(.22,.9,.24,1); }
-.px-fan-layer { transition: opacity .3s ease; }
 .px-orb { transition: left .55s cubic-bezier(.22,.9,.24,1), top .55s cubic-bezier(.22,.9,.24,1); }
 .px-orb-hub::before {
   transition: left .55s cubic-bezier(.22,.9,.24,1), top .55s cubic-bezier(.22,.9,.24,1),
@@ -1728,7 +1649,6 @@ body.px-home { --hubX: clamp(210px, 26vw, 460px); --hubY: 46vh; --dieD: clamp(13
 body.px-shut { --hubX: 64px; --hubY: 80px; --dieD: 54px; }
 body.px-shut .px-orb-rings { opacity: 0; transform: scale(.55); pointer-events: none; }
 body.px-shut .px-orb-bar { pointer-events: none; }
-body.px-shut .px-fan-layer { opacity: 0; pointer-events: none; }
 body.px-shut .die-num, body.px-shut .die-f { opacity: 0; }   /* 无数字骰子 */
 body.px-shut .px-die-cap { opacity: 0; }
 body.px-shut .px-die .px-die-3d { animation: px-die-idle 8s linear infinite; }
@@ -1747,21 +1667,112 @@ body.px-shut .px-die .px-die-3d { animation: px-die-idle 8s linear infinite; }
   body.px-enter .content { transform: translateX(64px); opacity: 0; }
 }
 
-/* 扇形窗口范围指示（▲/▼ 实心 = 该方向可滚）：沿末端射线位倾斜书写 */
-.px-fan-range {
-  position: absolute;
-  top: 0;
-  transform: translateY(-50%);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  color: #8a8a8a;
-  white-space: nowrap;
+/* ── 终端面板（二/三级）：固定在环外一列，白条外端折线引入；
+   列表按视口高度纵向流成多栏，子分组在面板内钻取（◂ 返回） ── */
+.px-lead {
+  position: absolute; left: 0; top: 0;
+  width: 1px; height: 1px;
+  overflow: visible;
+  z-index: 7;
   pointer-events: none;
-  animation: px-fan-fade .3s .25s both;
 }
-/* 滚轮重绘：即时定位，不重播生长/淡入 */
-.px-fan-layer.instant .px-fan-ray,
-.px-fan-layer.instant .px-fan-dot,
-.px-fan-layer.instant .px-fan-txt,
-.px-fan-layer.instant .px-fan-range { animation: none !important; }
+.px-lead polyline {
+  fill: none;
+  stroke: #ededed;
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  animation: px-lead-draw .3s ease-out both;
+}
+.px-lead rect { fill: var(--gold); }
+@keyframes px-lead-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+.px-panel {
+  position: absolute;
+  width: max-content;
+  z-index: 9;
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid #ededed;
+  box-shadow: 5px 5px 0 rgba(255, 255, 255, 0.16);
+  font-family: var(--font-mono);
+  max-height: calc(100vh - 84px);
+  overflow: auto;
+}
+.px-panel[hidden] { display: none; }
+/* 首开扫出（像素步进）：黑幕从左向右退去；用覆盖层而非 clip-path，避免动画未播时面板不可点中 */
+.px-panel.in::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 0;
+  background: #000;
+  pointer-events: none;
+  animation: px-panel-wipe .32s steps(8) .12s backwards;
+}
+@keyframes px-panel-wipe { from { width: 100%; } }
+
+.px-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: #ededed;
+  color: #000;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  white-space: nowrap;
+}
+.px-panel-head i { font-style: normal; font-size: 9px; letter-spacing: 0; opacity: .45; }
+.px-panel-head b { opacity: .35; }
+.px-panel-head span { margin-left: auto; padding-left: 24px; font-size: 10px; letter-spacing: 1px; opacity: .5; }
+.px-panel-back {
+  all: unset;
+  cursor: pointer;
+  padding: 0 6px;
+  margin-left: -4px;
+  background: #000;
+  color: var(--gold);
+}
+.px-panel-back:hover, .px-panel-back:focus-visible { background: var(--gold); color: #000; }
+
+.px-panel-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 12), auto);
+  column-gap: 6px;
+  padding: 8px 6px 10px;
+}
+.px-panel-item {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 132px;
+  height: 27px;
+  padding: 0 10px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: #d6d6d6;
+  white-space: nowrap;
+  cursor: pointer;
+  animation: px-ring-in .22s both;
+  animation-delay: calc(.2s + var(--d));
+}
+.px-panel-item::before { content: '·'; color: #5a5a5a; }
+.px-panel-item:hover,
+.px-panel-item:focus-visible { background: #ededed; color: #000; }
+.px-panel-item:hover::before,
+.px-panel-item:focus-visible::before { content: '▸'; color: #000; }
+.px-panel-item em { margin-left: auto; font-style: normal; font-size: 10px; letter-spacing: 0; color: #777; }
+.px-panel-item.sub::after { content: '▸'; color: #777; margin-left: -4px; }
+.px-panel-item.sub:hover em, .px-panel-item.sub:hover::after { color: #000; }
+.px-panel-item.cur { color: var(--gold); }
+.px-panel-item.cur::before { content: '◆'; color: var(--gold); }
+.px-panel-item.cur:hover { background: var(--gold); color: #000; }
+.px-panel-item.cur:hover::before { color: #000; }
+
+body.px-shut .px-panel, body.px-shut .px-lead { display: none; }
