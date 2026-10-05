@@ -165,11 +165,10 @@ html, body {
     linear-gradient(90deg, #e8e8e8 1px, transparent 1px);
   background-size: 24px 24px;
   min-width: 0; /* 防止 flex 子项撑破布局 */
-  position: relative; /* 供水印绝对定位 */
+  position: relative;
 }
 
-/* 角色词条：article 靠左 + 半透明（让水印从后方透出） */
-.content:has(.char-watermark) article {
+article {
   margin-left: 0;
   margin-right: auto;
   background: rgba(255, 255, 255, 0.84);
@@ -183,7 +182,7 @@ article {
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   position: relative;
-  z-index: 1; /* 浮于水印之上 */
+  z-index: 1;
   isolation: isolate;
   overflow: hidden;
 }
@@ -824,28 +823,6 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   article ul, article ol { padding-left: 20px; }
 }
 
-/* === 洞悉水印（.content 层绝对定位，article 半透明后透出） === */
-.char-watermark {
-  position: absolute;
-  right: 0;
-  top: 0;
-  /* 宽度用 clamp：普通屏 ~700px，2K 约 1100px，4K 约 1400px */
-  width: clamp(700px, 58%, 1500px);
-  pointer-events: none;
-  user-select: none;
-  z-index: 0; /* 低于 article(z-index:1)，高于 .content 背景 */
-}
-.char-watermark img {
-  width: 100%;
-  height: auto;
-  display: block;
-  opacity: 0.42;
-  mix-blend-mode: multiply; /* 透明/白色区消失，彩色部分叠于浅色底 */
-}
-@media (max-width: 768px) {
-  .char-watermark { display: none; }
-}
-
 /* === 画廊页卡 === */
 .gallery-tab-group { /* 独立作用域容器 */ }
 .gallery-tabs {
@@ -1148,4 +1125,4 @@ article li:has(.item-inline-img) {
 .cover-hint a:hover { background: #1a1a1a; color: #fff; }
 
 /* 图片：构建时已缩成小尺寸像素图，放大显示保持硬边像素 */
-article img, .newspaper img, .char-gallery img, .char-watermark img, #lbImg { image-rendering: pixelated; }
+article img, .newspaper img, .char-gallery img, #lbImg { image-rendering: pixelated; }

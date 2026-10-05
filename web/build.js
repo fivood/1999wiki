@@ -3,9 +3,9 @@ const path = require('path');
 const matter = require('gray-matter');
 const { marked } = require('marked');
 
-// sharp 可选：用于生成压缩水印 WebP；未安装时退化为直接复制原图
+// sharp 可选：用于把图片像素化（缩小+减色）；未安装时退化为直接复制原图
 let sharp = null;
-try { sharp = require('sharp'); } catch (e) { console.warn('⚠ sharp 未安装，水印将直接复制原图（可运行 npm install sharp --save-dev 安装）'); }
+try { sharp = require('sharp'); } catch (e) { console.warn('⚠ sharp 未安装，图片将直接复制原图（不像素化）（可运行 npm install sharp --save-dev 安装）'); }
 
 const WIKI_DIR = path.join(__dirname, '..', 'wiki');
 const RAW_DIR  = path.join(__dirname, '..', 'raw');
@@ -263,51 +263,6 @@ function buildCharGallery(file, root) {
   html += '</div>'; // .char-gallery
   // 单品由 injectItemsTabs() 在文章渲染后处理，画廊仅展示立绘
   return html;
-}
-
-/**
- * 若存在洞悉立绘，生成压缩 WebP 水印（用 sharp），并返回水印 div HTML。
- * 水印 div 作为 {{watermark}} 注入 .content 层（article 的兄弟元素）。
- */
-async function buildCharWatermark(file, root) {
-  const type = file.meta?.type;
-  if (type !== 'character' && type !== 'npc') return '';
-  const parts = file.slug.split('/');
-  if (parts[0] !== '角色' || parts.length < 3) return '';
-  const org = parts[1], charName = parts[2];
-  const srcDir = path.join(RAW_DIR, '立绘', org, charName);
-  if (!fs.existsSync(srcDir)) return '';
-
-  for (const ext of ['.png', '.jpg', '.jpeg', '.webp']) {
-    const srcFilename = `${charName}_洞悉${ext}`;
-    const src = path.join(srcDir, srcFilename);
-    if (!fs.existsSync(src)) continue;
-
-    const destDir = path.join(DIST_DIR, 'assets', '立绘', org, charName);
-    ensureDir(destDir);
-
-    // 生成压缩水印 WebP（1000px 宽，quality 75）；已存在则跳过
-    const wmFilename = `${charName}_洞悉_wm.webp`;
-    const wmDest = path.join(destDir, wmFilename);
-    if (!fs.existsSync(wmDest)) {
-      if (sharp) {
-        await sharp(src)
-          .resize({ width: 1000, withoutEnlargement: true })
-          .webp({ quality: 75 })
-          .toFile(wmDest);
-      } else {
-        // fallback：直接复制原图
-        fs.copyFileSync(src, wmDest);
-      }
-    }
-
-    // 同时确保原图也复制到 dist（画廊等仍需要）
-    copyImgIfMissing(src, path.join(destDir, srcFilename));
-
-    const url = `${root}assets/${encodeUrlPath('立绘', org, charName)}/${encodeURIComponent(wmFilename)}`;
-    return `<div class="char-watermark" aria-hidden="true"><img src="${url}" alt="" loading="lazy"></div>`;
-  }
-  return '';
 }
 
 /**
@@ -1024,7 +979,7 @@ function generateNewspaperHome(files) {
   return html;
 }
 
-/* ── 构建主流程（async，因 buildCharWatermark 用了 sharp） ── */
+/* ── 构建主流程（async，因图片像素化用了 sharp） ── */
 async function buildAll() {
   const searchDocs = [];
 
@@ -1069,8 +1024,6 @@ async function buildAll() {
     const metaBar = buildMetaBar(parsed.data);
     const gallery      = buildCharGallery(file, root);
     const storyImgMap  = buildStoryImgMap(file, root);
-    // watermark 现在是 {{watermark}} 独立槽位（.content 层兄弟元素）
-    const watermark = await buildCharWatermark(file, root);
 
     // 剧情图行内注入（h3 自动 float-left + {{storyimg:}} 占位符）
     contentHtml = injectStoryImages(contentHtml, storyImgMap);
@@ -1081,7 +1034,6 @@ async function buildAll() {
       .replace(/\{\{bodyclass\}\}/g, 'px-shut px-enter')
       .replace(/\{\{nav\}\}/g, navHtml)
       .replace(/\{\{breadcrumbs\}\}/g, breadcrumbs)
-      .replace(/\{\{watermark\}\}/g, watermark)
       .replace(/\{\{content\}\}/g, metaBar + gallery + contentHtml);
 
     // 写入
@@ -1106,7 +1058,6 @@ async function buildAll() {
     .replace(/\{\{bodyclass\}\}/g, 'px-shut px-enter')
     .replace(/\{\{nav\}\}/g, buildNav('newspaper.html'))
     .replace(/\{\{breadcrumbs\}\}/g, '')
-    .replace(/\{\{watermark\}\}/g, '')
     .replace(/\{\{content\}\}/g, newspaperHtml);
   fs.writeFileSync(path.join(DIST_DIR, 'newspaper.html'), newspaperPage, 'utf-8');
 
@@ -1122,7 +1073,6 @@ async function buildAll() {
     .replace(/\{\{bodyclass\}\}/g, 'px-home')
     .replace(/\{\{nav\}\}/g, buildNav('index.html'))
     .replace(/\{\{breadcrumbs\}\}/g, '')
-    .replace(/\{\{watermark\}\}/g, '')
     .replace(/\{\{content\}\}/g, coverHtml);
   fs.writeFileSync(path.join(DIST_DIR, 'index.html'), coverPage, 'utf-8');
 

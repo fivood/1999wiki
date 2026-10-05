@@ -110,7 +110,7 @@ body::before {
 .rv.in { opacity: 1; transform: none; }
 
 /* === 图片：构建时已缩成小尺寸像素图，放大显示保持硬边像素 === */
-article img, .newspaper img, .char-gallery img, .char-watermark img, #lbImg { image-rendering: pixelated; }
+article img, .newspaper img, .char-gallery img, #lbImg { image-rendering: pixelated; }
 
 /* === 顶部状态栏 === */
 .site-header {
@@ -270,8 +270,7 @@ article img, .newspaper img, .char-gallery img, .char-watermark img, #lbImg { im
   position: relative;
 }
 
-/* 角色词条：article 靠左 + 半透明（让水印从后方透出） */
-.content:has(.char-watermark) article {
+article {
   margin-left: 0;
   margin-right: auto;
   background: rgba(5, 5, 5, 0.82);
@@ -926,27 +925,6 @@ article pre code { background: none; padding: 0; color: var(--text); border: non
   margin-top: 14px;
   color: var(--border-dash);
   letter-spacing: 3px;
-}
-
-/* === 洞悉水印（黑底反白：screen 混合让线稿发光） === */
-.char-watermark {
-  position: absolute;
-  right: 0;
-  top: 0;
-  width: clamp(700px, 58%, 1500px);
-  pointer-events: none;
-  user-select: none;
-  z-index: 0;
-}
-.char-watermark img {
-  width: 100%;
-  height: auto;
-  display: block;
-  opacity: 0.30;
-  mix-blend-mode: screen; /* 黑底上只留亮色线条 */
-}
-@media (max-width: 768px) {
-  .char-watermark { display: none; }
 }
 
 /* === 画廊页卡（方形终端按钮） === */
