@@ -264,42 +264,10 @@
       });
       html += '</div></div>';
 
-      /* ── D20 骰子 SVG（二十面体正面投影：正六边形外廓，10 个三角面无缝拼合，左上光照） ── */
-      const dieSvg = `
-<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-  <g stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round">
-    <polygon points="100,14 25.5,57 100,66"   fill="#3b3b3b"/>
-    <polygon points="25.5,57 100,66 71,117"  fill="#343434"/>
-    <polygon points="25.5,57 71,117 25.5,143" fill="#2e2e2e"/>
-    <polygon points="100,14 100,66 174.5,57" fill="#292929"/>
-    <polygon points="100,66 71,117 129,117"  fill="#242424"/>
-    <polygon points="100,66 174.5,57 129,117" fill="#202020"/>
-    <polygon points="174.5,57 174.5,143 129,117" fill="#1b1b1b"/>
-    <polygon points="71,117 100,186 25.5,143" fill="#161616"/>
-    <polygon points="71,117 129,117 100,186" fill="#111111"/>
-    <polygon points="129,117 174.5,143 100,186" fill="#0c0c0c"/>
-  </g>
-  <polygon points="100,14 174.5,57 174.5,143 100,186 25.5,143 25.5,57" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>
-  <text class="die-f" x="75" y="46" text-anchor="middle" dominant-baseline="central">18</text>
-  <text class="die-f" x="125" y="46" text-anchor="middle" dominant-baseline="central">4</text>
-  <text class="die-f" x="66" y="80" text-anchor="middle" dominant-baseline="central">2</text>
-  <text class="die-f" x="134" y="80" text-anchor="middle" dominant-baseline="central">14</text>
-  <text class="die-f" x="41" y="106" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 41 106)">12</text>
-  <text class="die-f" x="159" y="106" text-anchor="middle" dominant-baseline="central" transform="rotate(90 159 106)">9</text>
-  <text class="die-f" x="66" y="149" text-anchor="middle" dominant-baseline="central" transform="rotate(180 66 149)">10</text>
-  <text class="die-f" x="134" y="149" text-anchor="middle" dominant-baseline="central" transform="rotate(180 134 149)">16</text>
-  <text class="die-f" x="100" y="140" text-anchor="middle" dominant-baseline="central" transform="rotate(180 100 140)">8</text>
-  <text class="die-num" id="pxDieNum" x="100" y="100" text-anchor="middle" dominant-baseline="central">20</text>
-</svg>`;
-      /* 背面：同图无 id（3D 原地转动时可见） */
-      const dieSvgBack = dieSvg.replace(' id="pxDieNum"', '');
+      /* D20：SVG 每帧由下方脚本按真实二十面体投影绘制 */
       html += '<div class="px-orb-hub">'
         + '<div class="px-die" id="pxDie" role="button" tabindex="0" aria-label="今日报纸：掷骰随机跳转词条">'
-        + '<div class="px-die-3d"><div class="px-die-face front">'
-        + dieSvg
-        + '</div><div class="px-die-face back" aria-hidden="true">'
-        + dieSvgBack
-        + '</div></div>'
+        + '<div class="px-die-3d"><svg viewBox="0 0 200 200" id="pxDieSvg" aria-hidden="true"></svg></div>'
         + '</div><div class="px-die-cap" id="pxDieCap"></div></div>';
       html += '<svg class="px-lead" id="pxLead" aria-hidden="true"></svg>'
         + '<div class="px-panel" id="pxPanel" role="menu" hidden></div>';
@@ -564,43 +532,127 @@
 
       /* ── D20 掷骰 → 今日报纸（骰子为报纸唯一入口；报纸每次加载随机换一批） ── */
       const die = orb.querySelector('#pxDie');
-      const num = orb.querySelector('#pxDieNum');
+      const dieSvg = orb.querySelector('#pxDieSvg');
       const cap = orb.querySelector('#pxDieCap');
       const rootUrl = (document.getElementById('cssPixel').getAttribute('href') || '').replace(/pixel\.css$/, '');
       let rolling = false;
+
+      /* ── 真实二十面体：顶点 = (0,±1,±φ) 的循环排列；棱长 2 的三元组即面。
+         世界坐标 x 右 / y 上 / z 朝观者；四元数存姿态，每帧投影（弱透视）+ 背面剔除 + 左上光照 ── */
+      const PHI = (1 + Math.sqrt(5)) / 2;
+      const V = [];
+      for (const s of [-1, 1]) for (const p of [-PHI, PHI]) V.push([0, s, p], [s, p, 0], [p, 0, s]);
+      const sub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+      const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+      const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+      const norm = a => { const l = Math.hypot(...a); return [a[0] / l, a[1] / l, a[2] / l]; };
+      const isEdge = (i, j) => Math.abs(dot(sub(V[i], V[j]), sub(V[i], V[j])) - 4) < 1e-6;
+      const F = [];
+      for (let i = 0; i < 12; i++) for (let j = i + 1; j < 12; j++) for (let k = j + 1; k < 12; k++) {
+        if (!isEdge(i, j) || !isEdge(j, k) || !isEdge(i, k)) continue;
+        const c = [0, 1, 2].map(m => (V[i][m] + V[j][m] + V[k][m]) / 3);
+        /* 数字"上方"指向第一个顶点（真骰的数字尖朝一角） */
+        F.push({ v: [i, j, k], c, n: norm(c), u: norm(sub(V[i], c)), num: 0 });
+      }
+      /* 对面之和为 21（真 D20 规则） */
+      let nextNum = 1;
+      F.forEach(f => {
+        if (f.num) return;
+        f.num = nextNum;
+        F.find(g => dot(g.n, f.n) < -0.999).num = 21 - nextNum++;
+      });
+
+      const qMul = (a, b) => [
+        a[0] * b[0] - a[1] * b[1] - a[2] * b[2] - a[3] * b[3],
+        a[0] * b[1] + a[1] * b[0] + a[2] * b[3] - a[3] * b[2],
+        a[0] * b[2] - a[1] * b[3] + a[2] * b[0] + a[3] * b[1],
+        a[0] * b[3] + a[1] * b[2] - a[2] * b[1] + a[3] * b[0]];
+      const qAxis = (ax, t) => { const s = Math.sin(t / 2); return [Math.cos(t / 2), ax[0] * s, ax[1] * s, ax[2] * s]; };
+      const qRot = (q, v) => { const p = qMul(qMul(q, [0, ...v]), [q[0], -q[1], -q[2], -q[3]]); return [p[1], p[2], p[3]]; };
+      const randAxis = () => norm([Math.random() - .5, Math.random() - .5, Math.random() - .5]);
+      /* 让第 num 面正对观者、数字朝上的姿态 */
+      function faceQuat(num) {
+        const f = F.find(g => g.num === num);
+        const ax = cross(f.n, [0, 0, 1]);
+        const q1 = Math.hypot(...ax) < 1e-9 ? [1, 0, 0, 0] : qAxis(norm(ax), Math.acos(f.n[2]));
+        const u = qRot(q1, f.u);
+        return qMul(qAxis([0, 0, 1], Math.PI / 2 - Math.atan2(u[1], u[0])), q1);
+      }
+
+      const CAM = 7;                       /* 相机距离（模型单位）：弱透视 */
+      const LIGHT = norm([-0.5, 0.6, 1]);  /* 左上前方光源 */
+      const TXT = 0.66 / 24;               /* 数字：24px 字号映射到面上 0.66 模型单位高 */
+      let qCur = faceQuat(20);
+      const S0 = 86 / Math.max(...V.map(v => { const r = qRot(qCur, v); return Math.hypot(r[0], r[1]); }));
+      function renderDie(q) {
+        const P = V.map(v => {
+          const r = qRot(q, v), k = CAM / (CAM - r[2]);
+          return (100 + S0 * k * r[0]).toFixed(1) + ',' + (100 - S0 * k * r[1]).toFixed(1);
+        });
+        let polys = '', nums = '', top = null, topZ = -1;
+        const vis = [];
+        F.forEach(f => {
+          const n = qRot(q, f.n), c = qRot(q, f.c);
+          if (dot(n, [-c[0], -c[1], CAM - c[2]]) <= 0) return;   /* 背面剔除 */
+          const g = Math.round(12 + 50 * Math.max(0, dot(n, LIGHT)));
+          polys += `<polygon points="${f.v.map(i => P[i]).join(' ')}" fill="rgb(${g},${g},${g})"/>`;
+          if (n[2] > topZ) { topZ = n[2]; top = f; }
+          vis.push([f, n, c]);
+        });
+        vis.forEach(([f, n, c]) => {
+          if (n[2] < 0.2) return;
+          /* 数字贴在面上：本地 x→面内右向，本地 y(向下)→面内 -上向，随姿态透视变形 */
+          const u = qRot(q, f.u), w = cross(u, n);
+          const S = S0 * CAM / (CAM - c[2]) * TXT;
+          const m = [S * w[0], -S * w[1], -S * u[0], S * u[1],
+            100 + S0 * CAM / (CAM - c[2]) * c[0], 100 - S0 * CAM / (CAM - c[2]) * c[1]].map(x => x.toFixed(3));
+          nums += `<text class="${f === top ? 'die-num' : 'die-f'}" transform="matrix(${m.join(' ')})"`
+            + ` opacity="${Math.min(1, (n[2] - 0.2) * 2.5).toFixed(2)}" font-size="24" text-anchor="middle" dominant-baseline="central"${f.num === 6 || f.num === 9 ? ' text-decoration="underline"' : ''}>${f.num}</text>`;   /* 6/9 加下划线，同真骰 */
+        });
+        dieSvg.innerHTML = `<g stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round">${polys}</g>${nums}`;
+        qCur = q;
+      }
+      renderDie(qCur);
 
       function jumpPaper() {
         location.href = rootUrl + 'newspaper.html';
       }
       function land(final) {
-        num.textContent = final;
-        die.classList.remove('spinning');
         die.classList.add('gold');
         /* 落定后才出现「今日报纸」内容 */
         cap.textContent = '今日报纸 · NO.' + final;
         cap.classList.add('on');
       }
+      /* 掷骰：q(t) = Rot(a, θa·(1-t)³) · Rot(b, θb·(1-t)⁴) · q目标。
+         a/θa 取「当前→目标」的轴角再加整圈，b 为随机副轴整圈翻滚——t=0 恰为当前姿态、t=1 精确落在目标面，
+         两轴不同衰减 = 先乱滚后减速归位 */
       function roll() {
         if (rolling) return;
         rolling = true;
         const final = 1 + ((Math.random() * 20) | 0);
+        const qT = faceQuat(final);
         if (reduceMotion) {
+          renderDie(qT);
           land(final);
           setTimeout(jumpPaper, 300);
           return;
         }
-        die.classList.add('spinning');
-        let ticks = 0;
-        const total = 13 + ((Math.random() * 6) | 0);
-        const iv = setInterval(() => {
-          num.textContent = 1 + ((Math.random() * 20) | 0);
-          if (++ticks >= total) {
-            clearInterval(iv);
-            land(final);
-            setTimeout(jumpPaper, 750);
-          }
-        }, 70);
+        let d = qMul(qCur, [qT[0], -qT[1], -qT[2], -qT[3]]);
+        if (d[0] < 0) d = d.map(x => -x);
+        const vs = Math.hypot(d[1], d[2], d[3]);
+        const a = vs < 1e-6 ? randAxis() : [d[1] / vs, d[2] / vs, d[3] / vs];
+        const thA = 2 * Math.atan2(vs, d[0]) + 2 * Math.PI * (2 + ((Math.random() * 2) | 0));
+        const b = randAxis(), thB = 2 * Math.PI * (1 + ((Math.random() * 2) | 0));
+        const DUR = 1700, t0 = performance.now();
+        (function tick(now) {
+          const t = Math.min(1, (now - t0) / DUR), e = 1 - t;
+          renderDie(t < 1 ? qMul(qAxis(a, thA * e * e * e), qMul(qAxis(b, thB * e * e * e * e), qT)) : qT);
+          if (t < 1) { requestAnimationFrame(tick); return; }
+          land(final);
+          setTimeout(jumpPaper, 750);
+        })(t0);
       }
+
       /* 收缩态：骰子是菜单开关（点了展开圆环）；展开态：骰子掷今日报纸 */
       function dieTap() {
         if (document.body.classList.contains('px-shut')) { expandOrb(); return; }

@@ -1550,31 +1550,13 @@ a:focus-visible, button:focus-visible, input:focus-visible {
   pointer-events: auto;
   transition: transform .15s ease;
   outline-offset: 4px;
-  perspective: 700px;
 }
 .px-die:hover { transform: scale(1.06); }
-/* 3D 原地转动：正/背两面卡片，掷骰时双轴翻滚 */
-.px-die-3d {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-}
-.px-die-face {
-  position: absolute;
-  inset: 0;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-.px-die-face.back { transform: rotateY(180deg); }
-.px-die-face svg { width: 100%; height: 100%; display: block; }
-.px-die.spinning .px-die-3d { animation: px-die-tumble .55s linear infinite; }
-@keyframes px-die-tumble {
-  0%   { transform: rotateX(0)      rotateY(0); }
-  100% { transform: rotateX(360deg) rotateY(360deg); }
-}
-.die-num { font-family: var(--font-disp); font-size: 40px; fill: #ffffff; }
-.die-f   { font-family: var(--font-disp); font-size: 17px; fill: #c9c9c9; }
+/* 真实二十面体由 JS 逐帧投影进 SVG（掷骰 = 四元数双轴翻滚后落定目标面）；字号由 SVG 属性 + 面变换矩阵决定 */
+.px-die-3d { width: 100%; height: 100%; }
+.px-die-3d svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.die-num { font-family: var(--font-disp); fill: #ffffff; }
+.die-f   { font-family: var(--font-disp); fill: #c9c9c9; }
 /* 停定数字变金黄 */
 .px-die.gold .die-num {
   fill: var(--gold);
