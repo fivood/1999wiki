@@ -37,11 +37,39 @@ function escapeHtml(str) {
 /* ── 立绘画廊 ── */
 const IMG_EXTS = /\.(png|jpg|jpeg|webp)$/i;
 
+/* 像素化：wiki 图片构建时缩到最长边 PX_MAX、PNG 减色为调色板（raw 原图不动），
+   页面用 image-rendering: pixelated 放大显示。按「目标已存在」缓存——
+   ponytail: 改了参数要先删 web/dist/assets 再构建才会重新生成 */
+const PX_MAX = 400, PX_COLORS = 48, PX_DITHER = 0.5;
+const imgJobs = new Map();   // dest → src，构建末尾统一并发处理
+
 function copyImgIfMissing(src, dest) {
-  if (!fs.existsSync(dest)) {
-    ensureDir(path.dirname(dest));
-    fs.copyFileSync(src, dest);
-  }
+  if (fs.existsSync(dest)) return;
+  ensureDir(path.dirname(dest));
+  if (sharp) imgJobs.set(dest, src);
+  else fs.copyFileSync(src, dest);
+}
+
+async function flushImgJobs() {
+  const jobs = [...imgJobs];
+  imgJobs.clear();
+  let done = 0;
+  const worker = async () => {
+    for (let job; (job = jobs.shift());) {
+      const [dest, src] = job;
+      try {
+        let img = sharp(src).resize(PX_MAX, PX_MAX, { fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' });
+        if (/.png$/i.test(dest)) img = img.png({ palette: true, colors: PX_COLORS, dither: PX_DITHER, effort: 10 });
+        await img.toFile(dest);   // jpg/webp 按扩展名保持原格式
+      } catch (e) {
+        console.warn(`⚠ 像素化失败，改为复制原图：${src}（${e.message}）`);
+        fs.copyFileSync(src, dest);
+      }
+      done++;
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  if (done) console.log(`   像素化图片：${done} 张`);
 }
 
 /** 将路径各段分别 encodeURIComponent，再用 / 拼接 */
@@ -1102,6 +1130,8 @@ async function buildAll() {
   fs.writeFileSync(path.join(DIST_DIR, 'search.json'), JSON.stringify(searchDocs), 'utf-8');
   fs.copyFileSync(CSS_PATH, path.join(DIST_DIR, 'style.css'));
   fs.copyFileSync(PIXEL_CSS_PATH, path.join(DIST_DIR, 'pixel.css'));
+  fs.copyFileSync(path.join(__dirname, 'orb.css'), path.join(DIST_DIR, 'orb.css'));
+  await flushImgJobs();
 
   console.log(`✅ 构建完成：${files.length} 个页面 → ${DIST_DIR}`);
   console.log(`   搜索索引：${searchDocs.length} 条`);

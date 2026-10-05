@@ -1,0 +1,471 @@
+/* 圆环菜单 + D20 今日报纸 + 终端面板：两套主题共用（template 中始终加载，排在主题样式表之后）。
+   只引用变量，配色由 pixel.css（深色）/ style.css（浅色）各自在 :root 定义 --orb-* / --die-* / --gold 等。 */
+
+/* 圆环几何（与主题无关） */
+:root {
+  --hubX: clamp(120px, 15vw, 240px);
+  --hubY: clamp(210px, 42vh, 360px);
+  --dieD: clamp(110px, 11vw, 180px);
+}
+/* r1/r2/r3 必须在 body 上声明：var() 在自定义属性声明处代入，
+   若写在 :root 会固化 :root 的 --dieD，body.px-home/.px-shut 的几何覆盖将失效 */
+body {
+  --r1: calc(var(--dieD) * 1.5);
+  --r2: calc(var(--dieD) * 1.95);
+  --r3: calc(var(--dieD) * 2.35);
+}
+
+/* ── 光标闪烁 ── */
+@keyframes px-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   圆环菜单 + D20 今日报纸（像素版桌面端导航）
+   ══════════════════════════════════════════════════════════════ */
+
+/* 桌面端：隐藏侧边栏，正文为圆环菜单区让位（菜单在左上，正文右移） */
+@media (min-width: 769px) {
+  .sidebar { display: none; }
+  .content {
+    margin-left: 0;
+    padding-left: calc(var(--hubX) + var(--r2) + 44px);
+  }
+}
+
+@keyframes px-orbit { to { transform: rotate(360deg); } }
+@keyframes px-orbit-cw { to { transform: rotate(360deg); } }
+@keyframes px-orbit-ccw { to { transform: rotate(-360deg); } }
+@keyframes px-ring-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes px-star-pulse {
+  0%, 100% { opacity: .55; }
+  50%      { opacity: 1; }
+}
+@keyframes px-ring-pulse {
+  0%, 100% { opacity: .38; }
+  50%      { opacity: .78; }
+}
+
+/* 容器：固定在左上，(0,0) 即圆心 hub（骰子所在）；默认不拦截指针 */
+.px-orb {
+  position: fixed;
+  left: var(--hubX);
+  top: var(--hubY);
+  width: 0;
+  height: 0;
+  z-index: 80;
+  display: none;
+  user-select: none;
+  pointer-events: none;
+}
+@media (min-width: 769px) {
+  .px-orb { display: block; }
+}
+
+/* 过圆心的十字虚线（工程图风味）——很慢地公转，星轨的骨架
+   !important 是为了在系统开了 prefers-reduced-motion 时仍保留 gentle 装饰旋转 */
+.px-orb-cross {
+  position: absolute; left: 0; top: 0;
+  animation: px-ring-in 1.2s both, px-orbit-ccw 180s linear infinite !important;
+}
+.px-orb-cross::before {
+  content: '';
+  position: absolute;
+  left: -70vw;
+  top: 0;
+  width: 140vw;
+  border-top: 1px dashed var(--orb-cross);
+}
+.px-orb-cross::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: -70vh;
+  height: 140vh;
+  border-left: 1px dashed var(--orb-cross);
+}
+
+/* 同心圆环：r1 内环 / r2 菜单环 / r3 虚线外环（反向慢转） */
+.px-orb-ring {
+  position: absolute;
+  left: calc(var(--r) * -1);
+  top: calc(var(--r) * -1);
+  width: calc(var(--r) * 2);
+  height: calc(var(--r) * 2);
+  border-radius: 50% !important;   /* 覆盖全局 border-radius:0 重置，圆环必须是圆 */
+  pointer-events: none;
+}
+.px-orb-ring.r1 { --r: var(--r1); border: 1px solid var(--orb-r1); animation: px-ring-in .8s .05s both; }
+.px-orb-ring.r2 { --r: var(--r2); border: 1px solid var(--orb-r2); animation: px-ring-in .8s .15s both; }
+.px-orb-ring.r3 {
+  --r: var(--r3);
+  border: 1px dashed var(--orb-r3);
+  animation: px-ring-in .8s .25s both, px-orbit 160s linear infinite reverse;
+}
+
+/* r2 外侧刻度环（静态） */
+.px-orb-ticks {
+  position: absolute;
+  left: calc(var(--r2) * -1 - 12px);
+  top: calc(var(--r2) * -1 - 12px);
+  width: calc(var(--r2) * 2 + 24px);
+  height: calc(var(--r2) * 2 + 24px);
+  border-radius: 50% !important;   /* 覆盖全局 border-radius:0 重置 */
+  background: repeating-conic-gradient(var(--orb-tick) 0deg 0.4deg, transparent 0.4deg 6deg);
+  -webkit-mask: radial-gradient(circle, transparent calc(var(--r2) - 1px), #000 var(--r2), #000 calc(var(--r2) + 9px), transparent calc(var(--r2) + 10px));
+  mask: radial-gradient(circle, transparent calc(var(--r2) - 1px), #000 var(--r2), #000 calc(var(--r2) + 9px), transparent calc(var(--r2) + 10px));
+  pointer-events: none;
+  animation: px-ring-in 1s .3s both;
+}
+/* ── 装饰性同心圆轨道（呼吸+慢转），星轨小点在其上公转 ── */
+.px-orb-orbit-line {
+  position: absolute;
+  border-radius: 50% !important;
+  pointer-events: none;
+  animation: px-ring-in 1s .2s both, px-ring-pulse 7s ease-in-out infinite !important;
+}
+.px-orb-orbit-line.ol-a {
+  --or: calc(var(--r1) * 0.72);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border: 1px dotted rgba(var(--orb-orbit-rgb), 0.45);
+}
+.px-orb-orbit-line.ol-b {
+  --or: calc(var(--r1) * 1.12);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border: 1px dashed rgba(var(--orb-orbit-rgb), 0.28);
+}
+.px-orb-orbit-line.ol-c {
+  --or: calc(var(--r2) * 1.46);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border: 1px dotted rgba(var(--orb-orbit-rgb), 0.22);
+}
+/* 公转层：绕 hub (0,0) 旋转，子星点带着走；不同周期与方向 */
+.px-orb-orbit {
+  position: absolute;
+  left: 0; top: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+  animation: px-ring-in .9s .3s both;
+}
+/* !important 让轨道在 prefers-reduced-motion: reduce 环境下仍保留 gentle 旋转
+   （周期长、无闪烁、无缩放，不会诱发 vestibular 不适） */
+.px-orb-orbit.o1 { animation: px-ring-in .9s .3s both, px-orbit-cw  24s linear infinite !important; }
+.px-orb-orbit.o2 { animation: px-ring-in .9s .4s both, px-orbit-ccw 58s linear infinite !important; }
+.px-orb-orbit.o3 { animation: px-ring-in .9s .5s both, px-orbit-cw 96s linear infinite !important; }
+.px-orb-orbit.o4 { animation: px-ring-in .9s .6s both, px-orbit-ccw 160s linear infinite !important; }
+/* 星点：绕 hub 定位于 (--pa, --pr)；与父轨一起转 */
+.px-orb-star {
+  position: absolute;
+  left: 0; top: 0;
+  width: 5px; height: 5px;
+  background: var(--orb-star);
+  border-radius: 50% !important;
+  transform: rotate(var(--pa)) translate(var(--pr)) translate(-50%, -50%);
+  transform-origin: 0 0;
+  box-shadow: 0 0 6px rgba(255,255,255,0.55), 0 0 12px rgba(255,255,255,0.25);
+  animation: px-star-pulse 3.4s ease-in-out infinite !important;
+}
+/* 慧星：星点带一条向内 fade 的尾迹（内侧较亮，向切线方向淡出） */
+.px-orb-star.comet {
+  width: 4px; height: 4px;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(243,199,79,0.75), 0 0 20px rgba(243,199,79,0.35);
+}
+.px-orb-star.comet::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 100%;                  /* 尾迹沿"内侧"方向拖出 */
+  width: 42px; height: 1px;
+  transform: translateY(-50%);
+  background: linear-gradient(to left, rgba(243,199,79,0.7), rgba(243,199,79,0));
+  pointer-events: none;
+}
+
+/* ── 拖动 hit 区：圆盘中间空白区域可抓、可转（不拦截白条/骰子/扇形）── */
+.px-orb-drag {
+  position: absolute;
+  --or: calc(var(--r2) * 1.35);
+  left: calc(var(--or) * -1); top: calc(var(--or) * -1);
+  width: calc(var(--or) * 2); height: calc(var(--or) * 2);
+  border-radius: 50% !important;
+  z-index: 3;                   /* 白条 z-6、hub z-5、扇形 z-7 都在其上 */
+  pointer-events: auto;
+  cursor: grab;
+  touch-action: none;
+  background: transparent;
+}
+.px-orb-drag.grab,
+.px-orb-drag:active { cursor: grabbing; }
+
+/* L1 白底条：只分布在右上 1/4 弧（-50°..+40°），长轴径向指向骰子；
+   锚点取「内左边缘中心」= r2 点，选中时 padding-right 平滑扩张 → 条向外伸长 */
+.px-orb-bars { position: absolute; left: 0; top: 0; z-index: 6; }
+.px-orb-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  /* 从 r2 点起，左边缘中心贴环，向外径向延伸 */
+  transform: rotate(var(--a)) translate(var(--r2)) translate(0, -50%);
+  transform-origin: 0 0;
+  background: var(--orb-bar-bg);
+  color: var(--orb-bar-fg);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  padding: 6px 14px 6px 12px;
+  white-space: nowrap;
+  cursor: pointer;
+  pointer-events: auto;
+  box-shadow: 3px 3px 0 var(--orb-bar-shadow);
+  /* padding-right 平滑扩张 = 白条向外伸长 */
+  transition: padding-right .35s cubic-bezier(.22,.9,.24,1),
+    background .18s ease, color .18s ease,
+    box-shadow .25s ease;
+  animation: px-ring-in .5s both;
+  animation-delay: calc(.25s + var(--i) * 60ms);
+}
+.px-orb-bar i {
+  font-style: normal;
+  font-size: 9px;
+  opacity: .45;
+  margin-right: 7px;
+  letter-spacing: 0;
+}
+.px-orb-bar:hover { background: var(--orb-act-bg); color: var(--orb-act-fg); outline: 1px solid var(--orb-act-fg); }
+.px-orb-bar.cur { background: var(--gold); }
+.px-orb-bar.cur:hover,
+.px-orb-bar.cur.act { background: var(--orb-act-bg); color: var(--gold); outline: 1px solid var(--gold); }
+/* 选中：变黑 + padding-right 扩张伸长 + 尾部箭头指示外延方向 */
+.px-orb-bar.act {
+  background: var(--orb-act-bg);
+  color: var(--orb-act-fg);
+  outline: 1px solid var(--orb-act-fg);
+  padding-right: 82px;   /* 与 JS 里的 BAR_EXT 呼应 */
+  box-shadow: 5px 5px 0 var(--orb-act-shadow);
+  z-index: 8;
+}
+.px-orb-bar.act::after {
+  content: '▸';
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  font-size: 14px;
+  color: var(--gold);
+  animation: px-blink 1.06s steps(1) infinite;
+}
+.px-orb-bar.cur.act::after { color: var(--gold); }
+
+/* ── D20 骰子（今日报纸），居于环心 ── */
+.px-orb-hub {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 5;
+  pointer-events: none;
+  animation: px-ring-in .6s .1s both;
+}
+/* 骰子外圈反向慢速虚线圆 */
+.px-orb-hub::before {
+  content: '';
+  position: absolute;
+  left: calc(50% - var(--dieD) * 0.64);
+  top: calc(50% - var(--dieD) * 0.64);
+  width: calc(var(--dieD) * 1.28);
+  height: calc(var(--dieD) * 1.28);
+  border: 1px dashed var(--border-dash);
+  border-radius: 50% !important;   /* 覆盖全局 border-radius:0 重置 */
+  animation: px-orbit 28s linear infinite reverse;
+  pointer-events: none;
+}
+.px-die {
+  position: relative;
+  width: var(--dieD);
+  height: var(--dieD);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: transform .15s ease;
+  outline-offset: 4px;
+}
+.px-die:hover { transform: scale(1.06); }
+/* 真实二十面体由 JS 逐帧投影进 SVG（掷骰 = 四元数双轴翻滚后落定目标面）；字号由 SVG 属性 + 面变换矩阵决定 */
+.px-die-3d { width: 100%; height: 100%; }
+.px-die-3d svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.die-num { font-family: var(--font-disp); fill: var(--die-num); }
+.die-f   { font-family: var(--font-disp); fill: var(--die-f); }
+/* 面明暗：JS 给每个面 --l（0..1 光照），在主题的暗/亮两色间插值 */
+.px-die-3d polygon { fill: color-mix(in srgb, var(--die-lit) calc(var(--l) * 100%), var(--die-dark)); stroke: var(--die-stroke); }
+/* 停定数字变金黄 */
+.px-die.gold .die-num {
+  fill: var(--gold);
+  filter: drop-shadow(0 0 5px rgba(243, 199, 79, 0.9));
+}
+.px-die.gold svg { filter: drop-shadow(0 0 12px rgba(243, 199, 79, 0.35)); }
+.px-die-cap {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--gold);
+  visibility: hidden;   /* 掷骰落定后才出现 */
+}
+.px-die-cap.on { visibility: visible; }
+
+/* ══════════════════════════════════════════════════════════════
+   菜单 ⇄ 正文 相互挤占：首页菜单占整页（px-home）；
+   收缩态（px-shut）圆环收成无数字旋转小骰，正文挤占回页面
+   ══════════════════════════════════════════════════════════════ */
+
+/* 环系包裹层：收缩/展开的挤压动画作用于它（子元素各自的入场动画不受影响） */
+.px-orb-rings { position: absolute; left: 0; top: 0; transition: opacity .45s ease, transform .55s cubic-bezier(.22,.9,.24,1); }
+.px-orb { transition: left .55s cubic-bezier(.22,.9,.24,1), top .55s cubic-bezier(.22,.9,.24,1); }
+.px-orb-hub::before {
+  transition: left .55s cubic-bezier(.22,.9,.24,1), top .55s cubic-bezier(.22,.9,.24,1),
+    width .55s cubic-bezier(.22,.9,.24,1), height .55s cubic-bezier(.22,.9,.24,1);
+}
+.px-die { transition: width .55s cubic-bezier(.22,.9,.24,1), height .55s cubic-bezier(.22,.9,.24,1), transform .15s ease; }
+.die-num, .die-f { transition: opacity .3s ease; }
+.px-die-cap { transition: opacity .3s ease; }
+
+/* 首页几何：圆环居左中、占满整页（正文板块在像素版桌面端不渲染） */
+body.px-home { --hubX: clamp(210px, 26vw, 460px); --hubY: 46vh; --dieD: clamp(130px, 13vw, 210px); }
+
+/* 收缩态几何（置于 px-home 之后，确保首页点词条收缩时也生效） */
+body.px-shut { --hubX: 64px; --hubY: calc(var(--header-height) + 30px); --dieD: 54px; }
+body.px-shut .px-orb-rings { opacity: 0; transform: scale(.55); pointer-events: none; }
+body.px-shut .px-orb-bar { pointer-events: none; }
+body.px-shut .die-num, body.px-shut .die-f { opacity: 0; }   /* 无数字骰子 */
+body.px-shut .px-die-cap { opacity: 0; }
+body.px-shut .px-die .px-die-3d { animation: px-die-idle 8s linear infinite; }
+@keyframes px-die-idle { to { transform: rotate(360deg); } }
+
+@media (min-width: 769px) {
+  /* 首页：右侧板块整页让给圆环菜单（移动端仍显示封面） */
+  body.px-home .content { display: none; }
+  /* 正文随菜单收缩/展开挤占页面（padding 过渡即相互挤压） */
+  .content {
+    transition: padding-left .6s cubic-bezier(.22,.9,.24,1),
+      transform .6s cubic-bezier(.22,.9,.24,1) .06s, opacity .5s ease .06s;
+  }
+  body.px-shut .content { padding-left: 92px; }
+  /* 内容页载入：正文从被挤压位展开进来 */
+  body.px-enter .content { transform: translateX(64px); opacity: 0; }
+}
+
+/* ── 终端面板（二/三级）：固定在环外一列，白条外端折线引入；
+   列表按视口高度纵向流成多栏，子分组在面板内钻取（◂ 返回） ── */
+.px-lead {
+  position: absolute; left: 0; top: 0;
+  width: 1px; height: 1px;
+  overflow: visible;
+  z-index: 7;
+  pointer-events: none;
+}
+.px-lead polyline {
+  fill: none;
+  stroke: var(--orb-ink);
+  stroke-width: 1;
+  stroke-dasharray: 1;
+  animation: px-lead-draw .3s ease-out both;
+}
+.px-lead rect { fill: var(--gold); }
+@keyframes px-lead-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+
+.px-panel {
+  position: absolute;
+  width: max-content;
+  z-index: 9;
+  pointer-events: auto;
+  background: var(--orb-panel-bg);
+  border: 1px solid var(--orb-ink);
+  box-shadow: 5px 5px 0 var(--orb-act-shadow);
+  font-family: var(--font-mono);
+  max-height: calc(100vh - 84px);
+  overflow: auto;
+}
+.px-panel[hidden] { display: none; }
+/* 首开扫出（像素步进）：黑幕从左向右退去；用覆盖层而非 clip-path，避免动画未播时面板不可点中 */
+.px-panel.in::after {
+  content: '';
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 0;
+  background: var(--orb-panel-solid);
+  pointer-events: none;
+  animation: px-panel-wipe .32s steps(8) .12s backwards;
+}
+@keyframes px-panel-wipe { from { width: 100%; } }
+
+.px-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: var(--orb-ink);
+  color: var(--orb-panel-solid);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  white-space: nowrap;
+}
+.px-panel-head i { font-style: normal; font-size: 9px; letter-spacing: 0; opacity: .45; }
+.px-panel-head b { opacity: .35; }
+.px-panel-head span { margin-left: auto; padding-left: 24px; font-size: 10px; letter-spacing: 1px; opacity: .5; }
+.px-panel-back {
+  all: unset;
+  cursor: pointer;
+  padding: 0 6px;
+  margin-left: -4px;
+  background: var(--orb-panel-solid);
+  color: var(--gold);
+}
+.px-panel-back:hover, .px-panel-back:focus-visible { background: var(--gold); color: var(--orb-panel-solid); }
+
+.px-panel-list {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--rows, 12), auto);
+  column-gap: 6px;
+  padding: 8px 6px 10px;
+}
+.px-panel-item {
+  all: unset;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 132px;
+  height: 27px;
+  padding: 0 10px 0 8px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--orb-item);
+  white-space: nowrap;
+  cursor: pointer;
+  animation: px-ring-in .22s both;
+  animation-delay: calc(.2s + var(--d));
+}
+.px-panel-item::before { content: '·'; color: var(--orb-item-dim); }
+.px-panel-item:hover,
+.px-panel-item:focus-visible { background: var(--orb-ink); color: var(--orb-panel-solid); }
+.px-panel-item:hover::before,
+.px-panel-item:focus-visible::before { content: '▸'; color: var(--orb-panel-solid); }
+.px-panel-item em { margin-left: auto; font-style: normal; font-size: 10px; letter-spacing: 0; color: var(--orb-item-dim); }
+.px-panel-item.sub::after { content: '▸'; color: var(--orb-item-dim); margin-left: -4px; }
+.px-panel-item.sub:hover em, .px-panel-item.sub:hover::after { color: var(--orb-panel-solid); }
+.px-panel-item.cur { color: var(--gold); }
+.px-panel-item.cur::before { content: '◆'; color: var(--gold); }
+.px-panel-item.cur:hover { background: var(--gold); color: var(--orb-panel-solid); }
+.px-panel-item.cur:hover::before { color: var(--orb-panel-solid); }
+
+body.px-shut .px-panel, body.px-shut .px-lead { display: none; }

@@ -21,6 +21,33 @@
   --header-height: 64px;
   --font-body: 'Noto Sans SC', 'Source Han Sans SC', 'PingFang SC', 'Microsoft YaHei', 'WenQuanYi Micro Hei', sans-serif;
   --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, 'Noto Sans SC', monospace;
+  --font-disp: Georgia, 'Times New Roman', serif;
+  --gold: #b8860b;
+  --border-dash: #c4c4c4;
+  /* 圆环菜单配色（几何与规则见 orb.css）：浅色报纸——墨黑条 + 纸白面板 */
+  --orb-cross: #e2e2e2;
+  --orb-r1: #c8c8c8;
+  --orb-r2: #9a9a9a;
+  --orb-r3: #d2d2d2;
+  --orb-tick: rgba(0, 0, 0, 0.35);
+  --orb-orbit-rgb: 80, 80, 80;
+  --orb-star: #1a1a1a;
+  --orb-bar-bg: #1a1a1a;
+  --orb-bar-fg: #fafafa;
+  --orb-bar-shadow: rgba(0, 0, 0, 0.18);
+  --orb-act-bg: #fafafa;
+  --orb-act-fg: #1a1a1a;
+  --orb-act-shadow: rgba(0, 0, 0, 0.14);
+  --orb-ink: #1a1a1a;
+  --orb-panel-bg: rgba(250, 250, 250, 0.97);
+  --orb-panel-solid: #fafafa;
+  --orb-item: #2a2a2a;
+  --orb-item-dim: #9a9a9a;
+  --die-dark: #c4c4c4;
+  --die-lit: #ffffff;
+  --die-stroke: #1a1a1a;
+  --die-num: #1a1a1a;
+  --die-f: #444;
 }
 
 * { box-sizing: border-box; }
@@ -1106,7 +1133,6 @@ article li:has(.item-inline-img) {
 
 /* === 像素版专属装饰：经典版隐藏 === */
 .px-edge, .px-coord { display: none; }
-.px-orb { display: none; }
 
 /* === 封面首页（今日报纸独立成页，骰子/链接进入） === */
 .cover-hero { text-align: center; padding: 15vh 20px 12vh; }
@@ -1120,3 +1146,6 @@ article li:has(.item-inline-img) {
   padding-bottom: 2px;
 }
 .cover-hint a:hover { background: #1a1a1a; color: #fff; }
+
+/* 图片：构建时已缩成小尺寸像素图，放大显示保持硬边像素 */
+article img, .newspaper img, .char-gallery img, .char-watermark img, #lbImg { image-rendering: pixelated; }

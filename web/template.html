@@ -7,6 +7,8 @@
   <!-- 双主题：pixel.css = 像素版（默认）；style.css = 经典版 -->
   <link id="cssPixel" rel="stylesheet" href="{{root}}pixel.css">
   <link id="cssClassic" rel="stylesheet" href="{{root}}style.css" disabled>
+  <!-- 圆环菜单两套主题共用（配色变量由上面两张表各自定义），须排在主题表之后 -->
+  <link rel="stylesheet" href="{{root}}orb.css">
   <script>
     /* 主题引导：首绘前按 localStorage 选择样式表，避免闪烁 */
     (function () {
@@ -34,7 +36,7 @@
   <!-- 像素版专属固定装饰（经典版隐藏） -->
   <div class="px-edge" aria-hidden="true">REVERSE:1999 — STORY ARCHIVE</div>
   <div class="px-coord" aria-hidden="true">SIG/1999.12.31 // CH-01 ▚▚▚</div>
-  <!-- 像素版圆环菜单 + D20 今日报纸（经典版隐藏，内容由脚本从侧边栏导航构建） -->
+  <!-- 圆环菜单 + D20 今日报纸（两套主题共用，内容由脚本从侧边栏导航构建；移动端回退侧边栏） -->
   <div id="pxOrb" class="px-orb" aria-label="圆环导航"></div>
 
   <div class="layout">
@@ -60,7 +62,7 @@
 
   <!-- 灯箱遮罩 -->
   <div id="lb" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:9999;align-items:center;justify-content:center;cursor:zoom-out">
-    <img id="lbImg" src="" alt="" style="max-width:92vw;max-height:92vh;object-fit:contain;display:block;pointer-events:none">
+    <img id="lbImg" src="" alt="" style="width:92vw;height:92vh;object-fit:contain;display:block;pointer-events:none">
   </div>
 
   <script>
@@ -198,7 +200,7 @@
     })();
 
     /* ── 像素版圆环菜单 + D20 今日报纸 ──
-       从 .nav-tree DOM 解析分组；经典版中 .px-orb 隐藏，此处仅构建不展示 */
+       从 .nav-tree DOM 解析分组；配色随主题（orb.css 变量），移动端隐藏 */
     (function () {
       const orb = document.getElementById('pxOrb');
       const nav = document.querySelector('.nav-tree');
@@ -394,7 +396,7 @@
       const r2Now = () => ring2El.offsetWidth / 2;
       /* 一级白条伸长量（与 CSS .px-orb-bar.act 的 padding 增量对应） */
       const BAR_EXT = 68;
-      const SAFE_TOP = 64, SAFE_BOTTOM = 20, SAFE_RIGHT = 20, ROW_H = 27;
+      const SAFE_TOP = 76, SAFE_BOTTOM = 20, SAFE_RIGHT = 20, ROW_H = 27;
       const pad2 = n => String(n).padStart(2, '0');
       let anchor = null, barW = null;   /* 当前白条外端（hub 坐标），面板与折线据此落位 */
 
@@ -594,8 +596,8 @@
         F.forEach(f => {
           const n = qRot(q, f.n), c = qRot(q, f.c);
           if (dot(n, [-c[0], -c[1], CAM - c[2]]) <= 0) return;   /* 背面剔除 */
-          const g = Math.round(12 + 50 * Math.max(0, dot(n, LIGHT)));
-          polys += `<polygon points="${f.v.map(i => P[i]).join(' ')}" fill="rgb(${g},${g},${g})"/>`;
+          const l = Math.max(0, dot(n, LIGHT));   /* 明暗由 CSS 在主题暗/亮色间插值 */
+          polys += `<polygon points="${f.v.map(i => P[i]).join(' ')}" style="--l:${l.toFixed(3)}"/>`;
           if (n[2] > topZ) { topZ = n[2]; top = f; }
           vis.push([f, n, c]);
         });
@@ -609,7 +611,7 @@
           nums += `<text class="${f === top ? 'die-num' : 'die-f'}" transform="matrix(${m.join(' ')})"`
             + ` opacity="${Math.min(1, (n[2] - 0.2) * 2.5).toFixed(2)}" font-size="24" text-anchor="middle" dominant-baseline="central"${f.num === 6 || f.num === 9 ? ' text-decoration="underline"' : ''}>${f.num}</text>`;   /* 6/9 加下划线，同真骰 */
         });
-        dieSvg.innerHTML = `<g stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round">${polys}</g>${nums}`;
+        dieSvg.innerHTML = `<g stroke-width="1.2" stroke-linejoin="round">${polys}</g>${nums}`;
         qCur = q;
       }
       renderDie(qCur);
