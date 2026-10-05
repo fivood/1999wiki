@@ -613,6 +613,16 @@
         qCur = q;
       }
       renderDie(qCur);
+      /* 展开态闲置：绕倾斜世界轴缓慢自转显出立体感；掷骰中 / 收缩态（CSS 平面转）/ 减少动态时不转 */
+      const IDLE_AXIS = norm([0.35, 1, 0.15]), IDLE_W = Math.PI * 2 / 24000;   /* 24s 一圈 */
+      if (!reduceMotion) {
+        let idleT = performance.now();
+        (function idle(now) {
+          const dt = Math.min(64, now - idleT); idleT = now;
+          if (!rolling && !document.body.classList.contains('px-shut')) renderDie(qMul(qAxis(IDLE_AXIS, IDLE_W * dt), qCur));
+          requestAnimationFrame(idle);
+        })(idleT);
+      }
 
       function jumpPaper() {
         location.href = rootUrl + 'newspaper.html';
