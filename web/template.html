@@ -631,8 +631,23 @@
       function land(final) {
         die.classList.add('gold');
         /* 落定后才出现「今日报纸」内容 */
-        cap.textContent = '今日报纸 · NO.' + final;
+        cap.textContent = (final === 20 ? '暴雨将至 · NO.' : '今日报纸 · NO.') + final;
         cap.classList.add('on');
+      }
+      /* 彩蛋「暴雨」：按需加载 storm.js，展开 1999site（暴雨档案馆）的宇宙星图；数据缺失则走 onFail */
+      function openStorm(onFail, onClose) {
+        const go = () => window.pxStorm(rootUrl, onFail, onClose);
+        if (window.pxStorm) { go(); return; }
+        const s = document.createElement('script');
+        s.src = rootUrl + 'storm.js';
+        s.onload = go;
+        s.onerror = () => { if (onFail) onFail(); };
+        document.head.appendChild(s);
+      }
+      /* 落定去向：天然 20 下暴雨（雨停后骰子复位，可再掷），其余进今日报纸 */
+      function afterLand(final) {
+        if (final !== 20) { jumpPaper(); return; }
+        openStorm(jumpPaper, () => { rolling = false; die.classList.remove('gold'); cap.classList.remove('on'); });
       }
       /* 掷骰：q(t) = Rot(a, θa·(1-t)³) · Rot(b, θb·(1-t)⁴) · q目标。
          a/θa 取「当前→目标」的轴角再加整圈，b 为随机副轴整圈翻滚——t=0 恰为当前姿态、t=1 精确落在目标面，
@@ -645,7 +660,7 @@
         if (reduceMotion) {
           renderDie(qT);
           land(final);
-          setTimeout(jumpPaper, 300);
+          setTimeout(() => afterLand(final), 300);
           return;
         }
         let d = qMul(qCur, [qT[0], -qT[1], -qT[2], -qT[3]]);
@@ -660,7 +675,7 @@
           renderDie(t < 1 ? qMul(qAxis(a, thA * e * e * e), qMul(qAxis(b, thB * e * e * e * e), qT)) : qT);
           if (t < 1) { requestAnimationFrame(tick); return; }
           land(final);
-          setTimeout(jumpPaper, 750);
+          setTimeout(() => afterLand(final), 750);
         })(t0);
       }
 
@@ -670,6 +685,13 @@
         roll();
       }
       die.addEventListener('click', dieTap);
+      /* 暗号：在输入框外键入 1999 也能召来暴雨 */
+      let typed = '';
+      document.addEventListener('keydown', e => {
+        if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return;
+        typed = (typed + e.key).slice(-4);
+        if (typed === '1999') { typed = ''; openStorm(); }
+      });
       die.addEventListener('keydown', e => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); dieTap(); }
       });
