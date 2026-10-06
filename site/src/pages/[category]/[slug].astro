@@ -1,0 +1,25 @@
+---
+import { getCollection } from 'astro:content';
+import WikiArticle from '../../components/WikiArticle.astro';
+import { siblings } from '../../utils/pager';
+import { FLAT_CATEGORIES } from '../../utils/text';
+
+export async function getStaticPaths() {
+  const all = await getCollection('wiki');
+  return all
+    .filter((e) => {
+      const parts = e.id.split('/');
+      return parts.length === 2 && FLAT_CATEGORIES.includes(parts[0]);
+    })
+    .map((e) => ({
+      params: { category: e.id.split('/')[0], slug: e.id.split('/')[1] },
+      props: { entries: all },
+    }));
+}
+
+const { entries } = Astro.props;
+const entry = entries.find((e) => e.id === Astro.params.category + '/' + Astro.params.slug)!;
+const { prev, next } = siblings(entries, entry.id);
+---
+
+<WikiArticle entry={entry} prev={prev} next={next} />

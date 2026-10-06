@@ -1,0 +1,14 @@
+---
+import Universe from '../../layouts/Universe.astro';
+import universe from '../../data/universe.json';
+
+// 角色 / 剧情概要 有自己的目录路由，这里覆盖其余所有分类（新增分类自动生效）
+export function getStaticPaths() {
+  return universe.cats
+    .filter((c) => !['角色', '剧情概要'].includes(c.id))
+    .map((c) => ({ params: { category: c.id } }));
+}
+const { category } = Astro.params;
+---
+
+<Universe title={category!} region={category} />

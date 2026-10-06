@@ -1,0 +1,102 @@
+---
+import { render } from 'astro:content';
+import type { CollectionEntry } from 'astro:content';
+import Base from '../layouts/Base.astro';
+import { BASE } from '../utils/base';
+import { TYPE_LABELS, CATEGORY_LABELS } from '../utils/text';
+
+interface Pager {
+  href: string;
+  title: string;
+}
+
+interface Props {
+  entry: CollectionEntry<'wiki'>;
+  prev?: Pager | null;
+  next?: Pager | null;
+}
+
+const { entry, prev, next } = Astro.props;
+const { Content } = await render(entry);
+
+const parts = entry.id.split('/');
+const category = parts[0];
+const categoryLabel = CATEGORY_LABELS[category] ?? category;
+const active = '/' + category;
+const title = entry.data.title ?? parts[parts.length - 1];
+const d = entry.data;
+---
+
+<Base title={title} active={active}>
+  <div class="wrap">
+    <header class="page-head">
+      <p class="mono-label">
+        <a href={BASE + '/' + category} style="color: var(--gold)">{categoryLabel}</a>
+        {parts.length > 2 && <span> / {parts.slice(1, -1).join(' / ')}</span>}
+      </p>
+      <h1 class="page-title">{title}</h1>
+      {d.aliases && d.aliases.length > 0 && (
+        <p class="article-aliases">{d.aliases.join(' · ')}</p>
+      )}
+    </header>
+
+    <div class="article-layout">
+      <aside class="article-meta">
+        {d.type && (
+          <div class="meta-block">
+            <p class="meta-key">Type · 类型</p>
+            <p class="meta-val">{TYPE_LABELS[d.type] ?? d.type}</p>
+          </div>
+        )}
+        {d.updated && (
+          <div class="meta-block">
+            <p class="meta-key">Updated · 更新</p>
+            <p class="meta-val">{d.updated}</p>
+          </div>
+        )}
+        {d.tags && d.tags.length > 0 && (
+          <div class="meta-block">
+            <p class="meta-key">Tags · 标签</p>
+            <p class="meta-val">{d.tags.map((t) => <span class="tag">{t}</span>)}</p>
+          </div>
+        )}
+        {d.sources && d.sources.length > 0 && (
+          <div class="meta-block">
+            <p class="meta-key">Sources · 来源</p>
+            <p class="meta-val sources">{d.sources.join('　')}</p>
+          </div>
+        )}
+      </aside>
+
+      <article class="prose-1999">
+        <Content />
+        <nav class="pager">
+          {prev ? (
+            <a class="prev" href={prev.href}>
+              <span class="pager-dir">← Prev</span>
+              {prev.title}
+            </a>
+          ) : <span />}
+          {next && (
+            <a class="next" href={next.href}>
+              <span class="pager-dir">Next →</span>
+              {next.title}
+            </a>
+          )}
+        </nav>
+      </article>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .article-aliases {
+    margin-top: 12px;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 17px;
+    color: var(--paper-faint);
+    letter-spacing: 0.08em;
+  }
+  .sources { font-family: var(--font-mono); font-size: 11.5px; word-break: break-all; }
+</style>

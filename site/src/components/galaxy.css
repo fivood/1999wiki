@@ -1,0 +1,552 @@
+/* ============================================================
+   角色银河 · Galaxy HUD & Panel
+   （只在 /角色 页面挂载，独立于全站 layout）
+   ============================================================ */
+
+.galaxy-stage {
+  position: fixed;
+  inset: 0;
+  background: #04050c;
+  color: var(--paper);
+  overflow: hidden;
+  z-index: 1;
+}
+
+/* 首屏悬浮提示 */
+.galaxy-hint {
+  position: absolute;
+  left: 50%;
+  bottom: 46px;
+  transform: translateX(-50%);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 18px;
+  border: 1px solid rgba(255, 208, 122, 0.28);
+  background: rgba(6, 8, 18, 0.55);
+  backdrop-filter: blur(6px);
+  color: var(--paper-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.6s var(--ease-out);
+}
+.galaxy-hint.show { opacity: 1; }
+.galaxy-hint .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: #e0b968;
+  box-shadow: 0 0 12px #e0b968;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity:.4 } 50% { opacity: 1 } }
+
+/* ---------- 左上：标题 & 分类切换（回到分类首页） ---------- */
+.galaxy-title {
+  position: absolute;
+  left: 34px;
+  top: calc(var(--nav-h) + 22px);
+  z-index: 4;
+  pointer-events: none;
+}
+.galaxy-title .en {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.32em;
+  color: #e0b968;
+  text-transform: uppercase;
+}
+.galaxy-title .zh {
+  display: block;
+  pointer-events: auto;
+  cursor: pointer;
+  background: none; border: 0; padding: 0;
+  font-family: inherit;
+  margin-top: 4px;
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--paper);
+}
+.galaxy-title .sub {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--paper-faint);
+  letter-spacing: 0.14em;
+}
+
+/* ---------- 右上：组织色带筛选 ---------- */
+.galaxy-orgs {
+  position: absolute;
+  left: 34px;
+  top: calc(var(--nav-h) + 110px);
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 208px;
+  max-width: 240px;
+  max-height: calc(100vh - var(--nav-h) - 150px);
+}
+.galaxy-org {
+  display: grid;
+  grid-template-columns: 22px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(230, 226, 214, 0.10);
+  color: rgba(230, 226, 214, 0.55);
+  font-size: 12.5px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.25s, border-color 0.25s, padding 0.25s;
+}
+.galaxy-org:hover { color: rgba(230, 226, 214, 0.9); border-left-color: rgba(230, 226, 214, 0.4); }
+.galaxy-org.active {
+  color: #e0b968;
+  border-left-color: #e0b968;
+  padding-left: 16px;
+}
+.galaxy-org .swatch {
+  /* 单色系统里 swatch 变成 tally 而不是色块：短横线表示存在，长度=人数感 */
+  height: 1px;
+  background: currentColor;
+  opacity: 0.55;
+}
+.galaxy-org .count {
+  font-family: var(--font-mono); font-size: 10px;
+  color: rgba(230, 226, 214, 0.4);
+  letter-spacing: 0.12em;
+}
+.galaxy-org.active .count { color: #e0b968; }
+
+/* 组织展开后的角色名录 */
+.galaxy-org-block { display: contents; }
+.galaxy-orgs { overflow-y: auto; scrollbar-width: none; padding: 8px 18px 8px 0; background: linear-gradient(90deg, rgba(1,2,4,0.88) 70%, rgba(1,2,4,0)); }
+.galaxy-index-toggle {
+  align-self: flex-start;
+  margin-bottom: 6px;
+  padding: 4px 10px;
+  background: none;
+  border: 1px solid rgba(230,226,214,0.14);
+  color: rgba(230,226,214,0.5);
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.24em;
+  cursor: pointer;
+}
+.galaxy-index-toggle:hover { color: var(--paper); border-color: rgba(230,226,214,0.35); }
+.galaxy-sub-block { display: contents; }
+.galaxy-sub {
+  display: flex; justify-content: space-between; gap: 10px;
+  margin-left: 16px;
+  padding: 4px 10px;
+  background: none; border: 0;
+  border-left: 1px solid rgba(230,226,214,0.08);
+  color: rgba(230,226,214,0.5);
+  font-family: var(--font-sans); font-size: 12px; letter-spacing: 0.06em;
+  cursor: pointer; text-align: left;
+  transition: color .2s, border-color .2s;
+}
+.galaxy-sub:hover { color: var(--paper); }
+.galaxy-sub.active { color: #e0b968; border-left-color: #e0b968; }
+.galaxy-sub .count { font-family: var(--font-mono); font-size: 10px; opacity: .6; }
+.galaxy-sub-block .galaxy-org-names { margin-left: 16px; }
+
+/* 星系名标签（3D 场景里，跟随星系中心） */
+.galaxy-cat-label {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 4px 10px;
+  background: none; border: 0;
+  border-top: 1px solid rgba(230,226,214,0.22);
+  color: rgba(230,226,214,0.55);
+  font-family: var(--font-sans);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .25s, border-color .25s;
+}
+.galaxy-cat-label .n { font-size: 13px; letter-spacing: 0.32em; }
+.galaxy-cat-label .c { font-family: var(--font-mono); font-size: 9px; letter-spacing: 0.3em; opacity: .55; }
+.galaxy-cat-label:hover, .galaxy-cat-label.active { color: #e0b968; border-top-color: #e0b968; }
+
+.galaxy-panel-scroll.stale { opacity: .45; transition: opacity .2s; }
+.galaxy-org-names {
+  list-style: none; margin: 2px 0 8px 0;
+  padding: 4px 0 6px 16px;
+  border-left: 1px solid rgba(224, 185, 104, 0.35);
+  max-height: 46vh;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+.galaxy-org-names::-webkit-scrollbar { width: 4px; }
+.galaxy-org-names::-webkit-scrollbar-thumb { background: rgba(224, 185, 104, 0.24); }
+.galaxy-org-names li { margin: 0; padding: 0; }
+.galaxy-name {
+  display: flex; align-items: baseline; gap: 8px;
+  width: 100%;
+  padding: 3px 8px;
+  background: none; border: none;
+  color: rgba(230, 226, 214, 0.65);
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.18s, background 0.18s, padding-left 0.18s;
+}
+.galaxy-name:hover, .galaxy-name:focus-visible {
+  color: #fff;
+  background: rgba(224, 185, 104, 0.08);
+  padding-left: 12px;
+  outline: none;
+}
+.galaxy-name.selected {
+  color: #e0b968;
+  background: rgba(224, 185, 104, 0.12);
+}
+.galaxy-name-alias {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-size: 10.5px;
+  color: rgba(230, 226, 214, 0.35);
+  margin-left: auto;
+}
+
+/* 引线覆层（在场景之上，面板之下） */
+.galaxy-pointer {
+  position: fixed; inset: 0;
+  z-index: 15;
+  width: 100vw; height: 100vh;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+}
+.galaxy-pointer-path {
+  fill: none;
+  stroke: #e0b968;
+  stroke-width: 0.9;
+  stroke-dasharray: 3 3;
+  opacity: 0.75;
+}
+.galaxy-pointer-dot {
+  fill: #e0b968;
+  stroke: rgba(224, 185, 104, 0.4);
+  stroke-width: 6;
+  paint-order: stroke fill;
+}
+.galaxy-pointer-bracket {
+  fill: none;
+  stroke: #e0b968;
+  stroke-width: 1;
+  opacity: 0.85;
+}
+
+.galaxy-reset {
+  margin-top: 4px;
+  padding: 6px 10px;
+  background: none;
+  border: 1px dashed rgba(255,255,255,0.16);
+  color: var(--paper-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.25s, border-color 0.25s;
+}
+.galaxy-reset:hover { color: var(--paper); border-color: rgba(255,255,255,0.35); }
+
+/* ---------- 悬停 3D 标签 ---------- */
+.galaxy-tag {
+  transform: translate(14px, -50%);
+  padding: 4px 10px;
+  background: rgba(6, 8, 18, 0.82);
+  border: 1px solid rgba(255, 208, 122, 0.55);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  color: var(--paper);
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+}
+.galaxy-tag-name { display: block; font-weight: 600; }
+.galaxy-tag-org  {
+  display: block; margin-top: 2px;
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.28em; color: #e0b968; text-transform: uppercase;
+}
+
+/* ---------- 右侧词条卡片（浮动，2/3 高度侧面居中） ---------- */
+.galaxy-panel {
+  position: fixed;
+  top: 50%; right: 26px;
+  width: min(420px, 44vw);
+  height: 66.667vh;
+  z-index: 20;
+  transform: translate(140%, -50%);
+  transition: transform 0.55s var(--ease-out);
+  color: var(--paper);
+  pointer-events: none;
+}
+.galaxy-panel.open { transform: translate(0, -50%); pointer-events: auto; }
+
+.galaxy-panel-card {
+  position: relative;
+  height: 100%;
+  background: linear-gradient(180deg, rgba(8,10,18,0.88), rgba(8,10,18,0.94));
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(230, 226, 214, 0.14);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 6px rgba(4,5,10,0.35);
+  overflow: hidden;
+}
+.galaxy-panel-corner {
+  position: absolute; width: 12px; height: 12px;
+  border-color: #e0b968; border-style: solid; border-width: 0;
+}
+.galaxy-panel-corner.tl { top: 6px; left: 6px; border-top-width: 1px; border-left-width: 1px; }
+.galaxy-panel-corner.tr { top: 6px; right: 6px; border-top-width: 1px; border-right-width: 1px; }
+.galaxy-panel-corner.bl { bottom: 6px; left: 6px; border-bottom-width: 1px; border-left-width: 1px; }
+.galaxy-panel-corner.br { bottom: 6px; right: 6px; border-bottom-width: 1px; border-right-width: 1px; }
+
+.galaxy-panel-close {
+  position: absolute;
+  top: 12px; right: 14px;
+  width: 30px; height: 30px;
+  background: none;
+  border: 1px solid rgba(224, 185, 104, 0.35);
+  color: #e0b968;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.25s, transform 0.25s;
+  z-index: 4;
+}
+.galaxy-panel-close:hover { background: rgba(224, 185, 104, 0.12); transform: rotate(90deg); }
+
+.galaxy-panel-scroll {
+  padding: 40px 26px 30px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  height: 100%;
+  box-sizing: border-box;
+}
+.galaxy-panel-scroll::-webkit-scrollbar { width: 4px; }
+.galaxy-panel-scroll::-webkit-scrollbar-thumb { background: rgba(224, 185, 104, 0.28); }
+
+.galaxy-panel-topline {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.24em; text-transform: uppercase;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(224, 185, 104, 0.32);
+}
+.galaxy-panel-fileid { color: #e0b968; }
+.galaxy-panel-topline .galaxy-panel-org { color: rgba(230, 226, 214, 0.55); }
+
+.galaxy-panel-loading { color: var(--paper-faint); font-style: italic; padding-top: 40px; }
+.galaxy-panel-error {
+  padding-top: 32px; color: rgba(230,226,214,0.75);
+  font-family: var(--font-sans); font-size: 14px;
+}
+.galaxy-panel-error-msg {
+  margin-top: 8px;
+  font-family: var(--font-mono); font-size: 11px;
+  color: rgba(230, 226, 214, 0.35);
+  word-break: break-all;
+}
+.galaxy-panel-retry {
+  margin-top: 14px;
+  padding: 6px 14px;
+  background: none;
+  border: 1px solid rgba(224, 185, 104, 0.5);
+  color: #e0b968;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.25s;
+}
+.galaxy-panel-retry:hover { background: rgba(224, 185, 104, 0.12); }
+
+.galaxy-panel-head { padding-bottom: 18px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.galaxy-panel-org {
+  font-family: var(--font-mono); font-size: 10px;
+  letter-spacing: 0.28em; color: #e0b968; text-transform: uppercase;
+}
+.galaxy-panel-name {
+  margin-top: 10px; font-size: 26px; font-weight: 800; letter-spacing: 0.06em;
+  color: var(--paper);
+}
+.galaxy-panel-alias {
+  margin-top: 6px;
+  font-family: var(--font-display); font-style: italic; font-size: 15px;
+  color: var(--paper-faint);
+  letter-spacing: 0.03em;
+}
+.galaxy-panel-portrait {
+  margin-top: 22px;
+  border: 1px solid rgba(255, 208, 122, 0.22);
+  background: linear-gradient(180deg, rgba(255,208,122,0.05), transparent);
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.galaxy-panel-portrait img {
+  width: auto; height: 100%; max-width: none;
+  filter: saturate(0.95) drop-shadow(0 8px 30px rgba(0,0,0,0.6));
+}
+.galaxy-panel-meta {
+  margin-top: 18px;
+  display: flex; flex-wrap: wrap; gap: 14px 22px;
+  font-size: 12.5px; color: var(--paper-dim);
+}
+.galaxy-panel-meta em {
+  font-family: var(--font-mono); font-style: normal;
+  color: #e0b968; font-size: 10px; letter-spacing: 0.26em; text-transform: uppercase;
+  margin-right: 7px;
+}
+.galaxy-panel-permalink {
+  margin-left: auto;
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.26em;
+  color: #e0b968; text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 208, 122, 0.45);
+}
+.galaxy-panel-permalink:hover { color: #fff; }
+
+.galaxy-panel-body { padding-top: 28px; font-size: 14.5px; line-height: 1.85; }
+.galaxy-panel-body h1 { display: none; }
+.galaxy-panel-body h2 {
+  margin-top: 2.2em; font-size: 18px; font-weight: 700;
+  color: #ffe6b8; letter-spacing: 0.05em;
+  display: flex; align-items: center; gap: 12px;
+}
+.galaxy-panel-body h2::before { content: '◇'; color: #e0b968; font-size: 10px; }
+.galaxy-panel-body h3 { margin-top: 1.6em; font-size: 15px; font-weight: 700; color: var(--paper); }
+.galaxy-panel-body p, .galaxy-panel-body ul, .galaxy-panel-body ol, .galaxy-panel-body table, .galaxy-panel-body blockquote { margin-top: 1em; }
+.galaxy-panel-body a {
+  color: #e0b968; border-bottom: 1px solid rgba(255, 208, 122, 0.35);
+  transition: color 0.25s, border-color 0.25s;
+}
+.galaxy-panel-body a:hover { color: #fff; border-bottom-color: #fff; }
+.galaxy-panel-body strong { color: #ffe6b8; font-weight: 600; }
+.galaxy-panel-body blockquote {
+  padding: 12px 18px;
+  border-left: 2px solid #e0b968;
+  background: linear-gradient(90deg, rgba(255,208,122,0.06), transparent 80%);
+}
+.galaxy-panel-body ul, .galaxy-panel-body ol { padding-left: 1.4em; }
+.galaxy-panel-body li::marker { color: #e0b968; }
+.galaxy-panel-body table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  display: block; overflow-x: auto;
+}
+.galaxy-panel-body th, .galaxy-panel-body td {
+  padding: 8px 10px; border: 1px solid rgba(255,255,255,0.1); text-align: left;
+}
+.galaxy-panel-body th { color: #ffe6b8; background: rgba(255, 208, 122, 0.05); }
+.galaxy-panel-body hr {
+  border: none; height: 1px; margin: 2em 0;
+  background: linear-gradient(90deg, transparent, rgba(255,208,122,0.35), transparent);
+}
+
+/* ---------- 移动端 ---------- */
+@media (max-width: 760px) {
+  .galaxy-title { left: 20px; top: calc(var(--nav-h) + 14px); }
+  .galaxy-title .zh { font-size: 22px; }
+  .galaxy-orgs {
+    left: 20px; right: auto; top: calc(var(--nav-h) + 80px);
+    min-width: 168px; max-width: 220px; gap: 2px;
+  }
+  .galaxy-org { font-size: 11.5px; padding: 4px 8px; }
+  .galaxy-org .count { display: none; }
+  .galaxy-panel {
+    width: auto; height: 66.667vh;
+    top: auto; left: 12px; right: 12px; bottom: 12px;
+    transform: translate(0, 112%);
+  }
+  .galaxy-panel.open { transform: translate(0, 0); }
+  .galaxy-panel-scroll { padding: 34px 20px 24px; }
+  .galaxy-panel-name { font-size: 22px; }
+  .galaxy-org-names { max-height: 32vh; }
+  .galaxy-pointer { display: none; }
+}
+
+/* ============================================================
+   菜单动效 · 交互
+   ============================================================ */
+@keyframes idx-in { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: none; } }
+@keyframes dash { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+@keyframes beat { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.6); opacity: .35; } }
+
+/* 行逐个错落浮入：--i 是行号 */
+.galaxy-org, .galaxy-sub, .galaxy-org-names li {
+  animation: idx-in .45s var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 28ms);
+}
+
+/* 分类行：左侧金色指示条从中间展开；计数横线随悬停伸长 */
+.galaxy-org { position: relative; }
+.galaxy-org::before {
+  content: ''; position: absolute; left: -1px; top: 0; bottom: 0; width: 1px;
+  background: #e0b968;
+  transform: scaleY(0);
+  transition: transform .35s var(--ease-out);
+}
+.galaxy-org:hover::before, .galaxy-org.preview::before { transform: scaleY(.6); }
+.galaxy-org.active::before { transform: scaleY(1); }
+.galaxy-org .swatch { width: var(--w); transition: width .4s var(--ease-out), opacity .3s; }
+.galaxy-org:hover .swatch, .galaxy-org.active .swatch { width: 22px; opacity: 1; }
+.galaxy-org .label { transition: transform .3s var(--ease-out), letter-spacing .3s var(--ease-out); }
+.galaxy-org:hover .label { transform: translateX(3px); letter-spacing: .14em; }
+
+.galaxy-sub { position: relative; transition: color .2s, border-color .2s, padding-left .25s var(--ease-out); }
+.galaxy-sub:hover { padding-left: 14px; }
+
+/* 名录行：悬停 / 场景联动高亮 —— 前缀小金点 */
+.galaxy-name { position: relative; }
+.galaxy-name::before {
+  content: ''; position: absolute; left: 0; top: 50%;
+  width: 4px; height: 4px; margin-top: -2px; border-radius: 50%;
+  background: #e0b968;
+  transform: scale(0);
+  transition: transform .25s var(--ease-out);
+}
+.galaxy-name:hover::before, .galaxy-name.hovered::before { transform: scale(1); }
+.galaxy-name.hovered { color: #fff; background: rgba(224, 185, 104, 0.08); padding-left: 12px; }
+.galaxy-name.selected::before { transform: scale(1); animation: beat 1.6s ease-in-out infinite; }
+
+/* 收起 / 展开按钮 */
+.galaxy-index-toggle { display: inline-flex; align-items: center; gap: 8px; transition: color .25s, border-color .25s, background .25s; }
+.galaxy-index-toggle .ico { display: inline-block; width: 8px; transition: transform .35s var(--ease-out); }
+.galaxy-index-toggle:hover .ico { transform: rotate(90deg); }
+.galaxy-index-toggle:hover { background: rgba(224, 185, 104, 0.06); }
+
+/* 顶栏在宇宙页：悬停链接时下方出现引线，文字微抬 */
+.nav-links a { transition: color .3s, transform .3s var(--ease-out); }
+.nav-links a:hover { transform: translateY(-1px); }
+
+/* 菜单 → 场景目标的引线：每次出现都重新"画"一遍 */
+.galaxy-leader {
+  position: fixed; inset: 0; width: 100vw; height: 100vh;
+  z-index: 3; pointer-events: none;
+  opacity: 0; transition: opacity .2s;
+}
+.galaxy-leader.on { opacity: 1; }
+.galaxy-leader path {
+  fill: none; stroke: #e0b968; stroke-width: 0.8; opacity: .7;
+  stroke-dasharray: 1; stroke-dashoffset: 1;
+}
+.galaxy-leader.on path { animation: dash .5s var(--ease-out) forwards; }
+.galaxy-leader circle {
+  fill: none; stroke: #e0b968; stroke-width: 1;
+  transform-box: fill-box; transform-origin: center;
+}
+.galaxy-leader.on circle { animation: beat 1.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .galaxy-org, .galaxy-sub, .galaxy-org-names li, .galaxy-leader.on path, .galaxy-leader.on circle, .galaxy-name.selected::before { animation: none; }
+  .galaxy-leader path { stroke-dashoffset: 0; }
+}

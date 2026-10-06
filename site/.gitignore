@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.astro/
+wallpapers/
+src/content/wiki/
+src/content/ids.json
+
+.DS_Store
+Thumbs.db
+*.log
+public/data/
+src/data/universe.json

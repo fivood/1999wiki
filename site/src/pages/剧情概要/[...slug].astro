@@ -1,0 +1,21 @@
+---
+import { getCollection } from 'astro:content';
+import WikiArticle from '../../components/WikiArticle.astro';
+import { siblings } from '../../utils/pager';
+
+export async function getStaticPaths() {
+  const all = await getCollection('wiki');
+  return all
+    .filter((e) => e.id.startsWith('剧情概要/'))
+    .map((e) => ({
+      params: { slug: e.id.slice('剧情概要/'.length) },
+      props: { entries: all },
+    }));
+}
+
+const { entries } = Astro.props;
+const entry = entries.find((e) => e.id === '剧情概要/' + Astro.params.slug)!;
+const { prev, next } = siblings(entries, entry.id);
+---
+
+<WikiArticle entry={entry} prev={prev} next={next} />

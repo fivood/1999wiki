@@ -55,7 +55,10 @@ Wiki 的主要用途是**支持同人创作**，特别关注角色说话风格�
 │   ├── style.css           # 样式表
 │   ├── build.js            # 构建脚本（生成 dist/）
 │   ├── bg.jpg              # 正文区域背景图
-│   └── dist/               # 构建输出（GitHub Pages 部署目录）
+│   └── dist/               # 整站构建输出（Cloudflare Pages 部署目录；3D 站在 dist/archive）
+│
+├── site/                   # 3D 星图站「暴雨档案馆」（Astro，挂 /archive/，见 site/README.md）
+├── package.json            # 整站构建入口：npm run setup / npm run build
 │
 ├── tools/                  # 爬虫脚本（用于从游戏 Wiki 提取原始素材）
 │   ├── scrape-*.js         # Puppeteer 爬虫脚本

@@ -1,0 +1,43 @@
+name: Deploy to Cloudflare Pages
+
+# 一个仓库、一次构建、一个站点：
+#   web/  → wiki（像素/经典双主题），站点根
+#   site/ → 3D 星图站（暴雨档案馆），挂 /archive/，astro 直接输出进 web/dist/archive
+# 根 npm run build 顺序：site sync（词条 + universe.json）→ web build（含暴雨彩蛋数据）→ astro build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install
+        run: npm run setup
+
+      - name: Build
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy web/dist --project-name=1999site --branch=main

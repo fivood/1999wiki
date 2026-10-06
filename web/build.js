@@ -979,11 +979,11 @@ function generateNewspaperHome(files) {
   return html;
 }
 
-/* ── 彩蛋「暴雨」数据：读兄弟仓库 1999site 的宇宙布局（同一份 wiki 的 3D 星图），
+/* ── 彩蛋「暴雨」数据：读同仓 site/（3D 星图站）的宇宙布局（同一份 wiki 的 3D 星图），
    压成 dist/storm.json 供 storm.js 按需加载；只保留本站有页面的词条。
-   1999site 不在旁边时不生成，彩蛋静默关闭（D20 掷出 20 照常进报纸）。 ── */
+   需先跑 site 的 sync 生成 universe.json（根 npm run build 已按此顺序）；缺失时不生成，彩蛋静默关闭。 ── */
 function buildStorm() {
-  const src = process.env.STORM_SRC || path.join(__dirname, '..', '..', '1999site', 'src', 'data', 'universe.json');
+  const src = process.env.STORM_SRC || path.join(__dirname, '..', 'site', 'src', 'data', 'universe.json');
   const out = path.join(DIST_DIR, 'storm.json');
   if (!fs.existsSync(src)) { fs.rmSync(out, { force: true }); return; }
   const u = JSON.parse(fs.readFileSync(src, 'utf-8'));

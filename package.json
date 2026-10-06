@@ -1,0 +1,10 @@
+{
+  "name": "1999wiki",
+  "private": true,
+  "description": "《重返未来：1999》剧情 wiki：web/（像素/经典双主题 wiki，站点根）+ site/（3D 星图站，挂 /archive/）一次构建为一个站点",
+  "scripts": {
+    "setup": "npm install --prefix web && npm ci --prefix site",
+    "build": "npm --prefix site run sync && node web/build.js && npm --prefix site run build:astro",
+    "dev:site": "npm --prefix site run dev"
+  }
+}

@@ -1,0 +1,20 @@
+---
+/** 所有分类首页共用：同一个宇宙，只是初始镜头区域不同 */
+import Base from './Base.astro';
+import GalaxyRoot from '../components/GalaxyRoot';
+import universe from '../data/universe.json';
+
+interface Props { title: string; region?: string | null }
+const { title, region = null } = Astro.props;
+---
+
+<Base title={title} active={region ? '/' + region : '/'}>
+  <GalaxyRoot client:only="react" data={universe as any} region={region} />
+</Base>
+
+<style is:global>
+  body { overflow: hidden; }
+  footer.footer, .vignette { display: none; }
+  .grain { opacity: 0.028 !important; }
+  .nav { background: linear-gradient(180deg, rgba(1, 2, 4, 0.85), transparent); border-bottom: 0; backdrop-filter: none; }
+</style>

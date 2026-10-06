@@ -8,9 +8,13 @@
 
 - `raw/` — 游戏原始素材（角色档案、活动剧情、小径碎片、沙盘解构、立绘）
 - `wiki/` — 整理后的 wiki 条目（Markdown），按 角色/剧情概要/世界观/组织/地点/轶事 分类
-- `web/` — 静态站点构建器（`node web/build.js` 生成 `web/dist/`）
+- `web/` — wiki 静态站点构建器（`node web/build.js` 生成 `web/dist/`，站点根）
+- `site/` — 3D 星图站「暴雨档案馆」（Astro + R3F，原独立仓库 1999site 并入），挂 `/archive/`，astro 直接输出进 `web/dist/archive`
 
-构建命令：`node web/build.js`
+构建命令（整站一次构建，仓库根）：`npm run setup`（首次装依赖）→ `npm run build`
+顺序：site sync（词条 + `site/src/data/universe.json`）→ `node web/build.js`（含暴雨彩蛋数据）→ astro build。
+只改 wiki 时仍可单跑 `node web/build.js`。3D 站子路径唯一来源 `site/site-base.mjs`。
+部署：根 `.github/workflows/deploy.yml`，push main → Cloudflare Pages 项目 `1999site`（需本仓库配 CF secrets）。
 
 ### Web 双主题（重要）
 
@@ -29,9 +33,9 @@
 两套主题都用 `image-rendering: pixelated` 放大显示（灯箱撑满 92vw×92vh）；raw 原图不动。
 按"目标已存在"缓存——改 `PX_*` 参数后需先删 `web/dist/assets` 再构建。
 
-**彩蛋「暴雨」（与兄弟仓库 1999site 联动，不跳站）**：build 时读 `../1999site/src/data/universe.json`（可用 `STORM_SRC` 覆盖）
+**彩蛋「暴雨」（与 site/ 3D 站联动，不跳站）**：build 时读 `site/src/data/universe.json`（可用 `STORM_SRC` 覆盖）
 压成 `dist/storm.json`，D20 掷出天然 20 或在输入框外键入 `1999` 时按需加载 `web/storm.js`，全屏 canvas 画出暴雨档案馆星图
-（金色漩涡=维尔汀原点、主线金线、内链星轨、向上的雨），点星体进**本站**对应词条；1999site 不在时不生成，掷 20 照常进报纸。
+（金色漩涡=维尔汀原点、主线金线、内链星轨、向上的雨），点星体进 wiki 对应词条；universe.json 缺失时不生成，掷 20 照常进报纸。
 
 桌面端导航（两套主题）= **圆环菜单 + D20 骰子**（`#pxOrb`，由 template.html 内脚本从 `.nav-tree` DOM
 动态构建；body 三态：`px-home` 首页 / `px-shut` 收缩 / 默认展开）：骰子居环心，三环同心圆（r1 实线/r2 菜单环+刻度/r3
