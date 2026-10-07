@@ -13,6 +13,7 @@
 import { readFileSync, readdirSync, statSync, writeFileSync, mkdirSync, rmSync, existsSync } from 'node:fs';
 import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BASE } from '../site-base.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC = join(root, 'src', 'content', 'wiki');
@@ -75,7 +76,11 @@ function summary(body, max = 140) {
 function links(body) {
   const out = new Set();
   for (const m of body.matchAll(/\]\((\/[^)\s#]+)\)/g)) {
-    try { out.add(decodeURIComponent(m[1]).slice(1)); } catch { /* 坏链接跳过 */ }
+    try {
+      // 内链已由 sync 改写为 BASE + '/' + id（见 site-base.mjs）
+      const p = decodeURIComponent(m[1]);
+      if (p.startsWith(BASE + '/')) out.add(p.slice(BASE.length + 1));
+    } catch { /* 坏链接跳过 */ }
   }
   return out;
 }
