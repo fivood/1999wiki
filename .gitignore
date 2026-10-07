@@ -3,7 +3,7 @@ web/node_modules/
 web/dist/
 npm-debug.log
 yarn-error.log
-package-lock.json
+/package-lock.json
 web/package-lock.json
 
 # OS generated files
