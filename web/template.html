@@ -9,7 +9,9 @@
   <link id="cssClassic" rel="stylesheet" href="{{root}}style.css" disabled>
   <!-- 圆环菜单两套主题共用（配色变量由上面两张表各自定义），须排在主题表之后 -->
   <link rel="stylesheet" href="{{root}}orb.css">
-  <script>
+  <!-- data-cfasync="false"：Cloudflare 的 Rocket Loader 会把所有脚本推迟到页面画出来以后才跑，
+       这段必须赶在首绘之前，所以让它别碰（不然选了经典版的人会先看到一闪而过的像素版） -->
+  <script data-cfasync="false">
     /* 主题引导：首绘前按 localStorage 选择样式表，避免闪烁 */
     (function () {
       var t = null;
