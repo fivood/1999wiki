@@ -2,6 +2,7 @@ node_modules/
 dist/
 .astro/
 wallpapers/
+media/
 src/content/wiki/
 src/content/ids.json
 
