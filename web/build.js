@@ -379,7 +379,8 @@ function loadRawItems(charName) {
   return blocks.map(block => {
     const lines = block.split('\n').map(s => s.trim()).filter(Boolean);
     const firstLine = lines[0] || '';
-    const name = stripQuotes(firstLine);
+    // 图片文件名里的引号已全部剥掉，这里也全剥，否则“X”Y 这类名字对不上图
+    const name = stripAllQuotes(firstLine);
     return { name, firstLine, lines, block };
   });
 }
